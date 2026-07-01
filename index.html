@@ -59,6 +59,11 @@
   .tbtn.ghost{background:transparent;}
 
   main{padding:10px 10px 18px; max-width:1180px; margin:0 auto;}
+  #online-bar{max-width:1180px; margin:0 auto; padding:6px 10px 0; display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+  .ol-status{font:600 12px sans-serif; color:var(--ink-dim);}
+  .ol-status b{font-family:"Saira Condensed",sans-serif; letter-spacing:1px;}
+  .ol-dot{display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:5px; vertical-align:middle;}
+  .ol-dot.on{background:#57c06a;} .ol-dot.off{background:#c0574f;} .ol-dot.wait{background:#c9a24a;}
   .side{position:relative; border:1px solid var(--panel-edge); border-radius:12px; padding:16px 8px 8px; margin-bottom:8px;
     background:linear-gradient(180deg,rgba(40,49,69,.18),rgba(20,25,36,.18)); transition:box-shadow .2s,border-color .2s;}
   .side.opp{background:linear-gradient(180deg,rgba(120,60,70,.12),rgba(20,25,36,.18));}
@@ -121,7 +126,7 @@
   .nm{position:absolute; left:0; right:0; top:24px; z-index:2; padding:0 4px; font-size:8.5px; line-height:1.18;
     font-weight:600; text-align:center; word-break:break-all; text-shadow:0 1px 2px rgba(0,0,0,.6);}
   .card.hasimg .nm{top:auto; bottom:3px; padding:0 4px;}
-  .pw{position:absolute; right:3px; bottom:3px; z-index:2; font-family:"Saira Condensed",sans-serif; font-weight:700; font-size:11px;
+  .card .pw{position:absolute; right:3px; bottom:3px; z-index:2; font-family:"Saira Condensed",sans-serif; font-weight:700; font-size:11px;
     color:#fff; background:rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.3); padding:0 4px; border-radius:4px; line-height:1.4;}
   .card.hasimg .pw{right:4px; bottom:auto; top:21px;}
   .ribbon{position:absolute; left:0; bottom:0; width:100%; font-size:7px; letter-spacing:1px; z-index:2; text-align:center;
@@ -273,6 +278,12 @@
   <button class="tbtn ghost" id="btn-help">使い方</button>
   <button class="tbtn" id="btn-reset">新ゲーム</button>
 </header>
+<div id="online-bar">
+  <button class="tbtn gold" id="btn-online">オンライン対戦を作成</button>
+  <span id="online-status" class="ol-status"></span>
+  <button class="tbtn" id="btn-copylink" style="display:none">招待リンクをコピー</button>
+  <button class="tbtn" id="btn-online-new" style="display:none">オンライン新ゲーム</button>
+</div>
 
 <main id="board"></main>
 
@@ -355,6 +366,8 @@
 
 <div id="toast"></div>
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
 /* ===== ユーティリティ ===== */
 function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[m]));}
@@ -523,7 +536,7 @@ function emptyHint(t){const e=el("div","empty-slot"); e.textContent=t; e.style.w
 
 function laneEl(pl,zone){return document.querySelector(`.lane[data-pl="${pl}"][data-zone="${zone}"]`);}
 function setCnt(pl,zone,n){const e=document.querySelector(`[data-cnt="${pl}-${zone}"]`); if(e) e.textContent=`${n}枚`;}
-function render(){ ["me","opp"].forEach(renderSide); updateHud(); }
+function render(){ ["me","opp"].forEach(renderSide); updateHud(); pushMine(); }
 function renderSide(pl){
   const st=P[pl];
   let l=laneEl(pl,"battle"); l.innerHTML=""; if(!st.battle.length) l.appendChild(emptyHint("バトル\nゾーン")); st.battle.forEach(c=>l.appendChild(makeCard(c,"battle")));
@@ -654,6 +667,7 @@ function openDetail(c){
 
 /* ===== アクションシート ===== */
 function openSheet(c,zone){
+  if(ONLINE){ const f=loc(c.id); if(f && f.pl==="opp"){ toast("相手のカードは操作できません"); return; } }
   const sheet=document.getElementById("sheet");
   const tappable=(zone==="battle"||zone==="mana"); const faceDown=(zone==="shields");
   const sw=swatch(c); const multiNote=isMulti(c)?"（多色）":"";
@@ -810,6 +824,7 @@ function pullFromStack(topId,cardId,to){
 
 /* ===== 山札メニュー ===== */
 function openDeckMenu(pl){
+  if(ONLINE && pl==="opp"){ toast("相手の山札は操作できません"); return; }
   const sheet=document.getElementById("sheet");
   sheet.innerHTML=`<div class="sheet-h"><div class="mini card back" style="width:30px;height:43px;border-radius:5px"></div>
     <div><div class="t">山札（${PLABEL[pl]}）</div><div class="s">残り ${P[pl].deck.length}枚</div></div></div>
@@ -886,6 +901,7 @@ function attachPointer(node,card,zone){
     if(!drag.moved){cleanupDrag(); openSheet(card,zone); return;}
     const tgt=zoneAtPoint(e.clientX,e.clientY); cleanupDrag();
     const owner=loc(card.id);
+    if(ONLINE && owner && owner.pl==="opp"){ render(); return; }
     if(tgt && owner && tgt.pl===owner.pl && tgt.zone!==zone) handleDrop(card.id,tgt.zone); else render();});
   node.addEventListener("pointercancel",()=>{cleanupDrag(); render();});
 }
@@ -903,6 +919,12 @@ function handleDrop(id,to){
 
 /* ===== ターン操作 ===== */
 function startTurn(){
+  if(ONLINE){
+    if(active!=="me"){ toast("いまは相手の手番です"); return; }
+    active="opp"; turn++; pushMeta();
+    render(); toast("相手に手番を渡しました");
+    return;
+  }
   active = active==="me" ? "opp" : "me";
   turn++;
   [...P[active].battle, ...P[active].mana].forEach(c=>c.tapped=false);
@@ -1037,6 +1059,9 @@ document.getElementById("backup-load").onclick=()=>{
 let toastT;
 function toast(m){const t=document.getElementById("toast"); t.textContent=m; t.classList.add("show"); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove("show"),1900);}
 document.getElementById("btn-turn").onclick=startTurn;
+document.getElementById("btn-online").onclick=createRoom;
+document.getElementById("btn-copylink").onclick=copyInvite;
+document.getElementById("btn-online-new").onclick=onlineNewGame;
 document.getElementById("btn-reset").onclick=()=>confirmSheet("新しいゲームを始めます。よろしいですか？","新ゲーム開始",newGame);
 document.getElementById("btn-help").onclick=()=>document.getElementById("modal-help").classList.add("show");
 document.getElementById("help-close").onclick=()=>document.getElementById("modal-help").classList.remove("show");
@@ -1046,10 +1071,115 @@ document.getElementById("modal-detail").addEventListener("click",e=>{if(e.target
 document.getElementById("modal-bulk").addEventListener("click",e=>{if(e.target.id==="modal-bulk") e.currentTarget.classList.remove("show");});
 document.getElementById("modal-backup").addEventListener("click",e=>{if(e.target.id==="modal-backup") e.currentTarget.classList.remove("show");});
 
+/* ===== オンライン同期（信頼ベース・全公開） ===== */
+const firebaseConfig = {
+  apiKey: "AIzaSyCd30nDsC8OhyD7glZL3GN3fM0Jy1VzzoY",
+  authDomain: "dm-mat.firebaseapp.com",
+  databaseURL: "https://dm-mat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "dm-mat",
+  storageBucket: "dm-mat.firebasestorage.app",
+  messagingSenderId: "868505862435",
+  appId: "1:868505862435:web:c6c10a11b83cfd4c428c96"
+};
+let ONLINE=false, db=null, roomRef=null, mySeat=null, oppSeat=null;
+let applyingRemote=false, olInit=false, lastMetaActive=null, pushTimer=null, clientId=null;
+
+function randomRoom(){ return Math.random().toString(36).slice(2,7).toUpperCase(); }
+function getClientId(){ try{ let c=localStorage.getItem("dm_client"); if(!c){ c=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem("dm_client",c);} return c; }catch(e){ return "c"+Date.now(); } }
+function setStatus(html){ const e=document.getElementById("online-status"); if(e) e.innerHTML=html; }
+
+function serializeSide(s){ const o={}; ZONES.forEach(z=>o[z]=s[z]||[]); return JSON.stringify(o); }
+function deserializeSide(str){ try{ const o=JSON.parse(str); const s=emptyState(); ZONES.forEach(z=>{ s[z]=Array.isArray(o[z])?o[z]:[]; }); return s; }catch(e){ return emptyState(); } }
+
+function dealMineOnline(){
+  P.me=emptyState();
+  P.me.deck=shuffle(buildDeck("me"));
+  for(let i=0;i<5 && P.me.deck.length;i++) P.me.shields.push(P.me.deck.shift());
+  for(let i=0;i<5 && P.me.deck.length;i++) P.me.hand.push(P.me.deck.shift());
+}
+function pushMine(){
+  if(!ONLINE||applyingRemote||!olInit||!mySeat||!roomRef) return;
+  clearTimeout(pushTimer);
+  pushTimer=setTimeout(()=>{ roomRef.child(mySeat).set(serializeSide(P.me)); }, 150);
+}
+function pushMeta(){ if(!ONLINE||!roomRef) return; roomRef.child("meta").set({active:(active==="me"?mySeat:oppSeat), turn}); }
+
+function initOnline(room){
+  if(!window.firebase){ setStatus('<span class="ol-dot off"></span>オンライン機能は公開URL（pages.dev）で動きます'); newGame(); return; }
+  ONLINE=true; clientId=getClientId();
+  try{ firebase.initializeApp(firebaseConfig); }catch(e){}
+  db=firebase.database(); roomRef=db.ref("rooms/"+room);
+  setStatus('<span class="ol-dot wait"></span>接続中…');
+  document.getElementById("btn-online").style.display="none";
+  document.getElementById("btn-copylink").style.display="";
+  document.getElementById("btn-online-new").style.display="";
+  document.getElementById("btn-turn").textContent="ターンを相手に渡す";
+
+  roomRef.child("seats").transaction(cur=>{
+    cur=cur||{};
+    if(cur.host===clientId||cur.guest===clientId) return cur;
+    if(!cur.host){ cur.host=clientId; return cur; }
+    if(!cur.guest){ cur.guest=clientId; return cur; }
+    return; // 満室
+  }, (err,committed,snap)=>{
+    const seats=snap?snap.val():null;
+    if(!seats || (seats.host!==clientId && seats.guest!==clientId)){
+      setStatus('<span class="ol-dot off"></span>この部屋は満室です（2人まで）'); return;
+    }
+    mySeat = seats.host===clientId ? "host":"guest";
+    oppSeat = mySeat==="host" ? "guest":"host";
+    // 退室時に自分の席を解放
+    roomRef.child("seats/"+mySeat).onDisconnect().remove();
+    subscribeRoom(room);
+  });
+}
+function subscribeRoom(room){
+  roomRef.on("value", snap=>{
+    const data=snap.val()||{};
+    applyingRemote=true;
+    // 自分の側：初回のみ復元 or 配布
+    if(!olInit){
+      if(data[mySeat]) P.me=deserializeSide(data[mySeat]);
+      else { dealMineOnline(); roomRef.child(mySeat).set(serializeSide(P.me)); }
+    }
+    // 相手の側
+    P.opp = data[oppSeat] ? deserializeSide(data[oppSeat]) : emptyState();
+    // メタ（手番・ターン）
+    let justMyTurn=false;
+    if(data.meta){
+      turn = data.meta.turn||1;
+      active = (data.meta.active===mySeat) ? "me":"opp";
+      if(data.meta.active===mySeat && lastMetaActive && lastMetaActive!==mySeat) justMyTurn=true;
+      lastMetaActive = data.meta.active;
+    } else if(mySeat==="host"){
+      active="me"; turn=1; lastMetaActive="host"; roomRef.child("meta").set({active:"host",turn:1});
+    }
+    if(!olInit){ olInit=true; buildBoard(); }
+    if(justMyTurn){ [...P.me.battle, ...P.me.mana].forEach(c=>c.tapped=false); }
+    render();                 // applyingRemote=true のままなので pushMine は抑止される
+    applyingRemote=false;
+    if(justMyTurn){ pushMine(); toast(`ターン${turn}：あなたの手番（アンタップ）`); }
+    const oppThere = !!data[oppSeat] || (data.seats && data.seats[oppSeat]);
+    setStatus(`<span class="ol-dot ${oppThere?'on':'wait'}"></span>部屋 <b>${room}</b> ・ あなた=${mySeat==='host'?'ホスト':'ゲスト'} ・ ${oppThere?'相手 接続中':'相手を待っています'}`);
+  });
+}
+function createRoom(){ location.href = location.pathname + "?room=" + randomRoom(); }
+function copyInvite(){ const u=location.href; try{ navigator.clipboard.writeText(u); toast("招待リンクをコピーしました"); }catch(e){ toast(u); } }
+function onlineNewGame(){
+  if(!ONLINE) return;
+  confirmSheet("自分の山札を引き直します（相手の盤面はそのまま）。よろしいですか？","引き直す",()=>{
+    dealMineOnline(); pushMine(); render(); toast("自分の盤面をリセットしました");
+  });
+}
+
 /* ===== 起動 ===== */
 DECKS=loadDecks();
 setEditTarget("me");
-newGame();
+(function(){
+  const room=new URLSearchParams(location.search).get("room");
+  if(room){ buildBoard(); render(); initOnline(room); }
+  else { newGame(); }
+})();
 </script>
 </body>
 </html>
