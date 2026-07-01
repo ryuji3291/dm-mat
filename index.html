@@ -196,6 +196,7 @@
 
   /* 表向きシールド */
   .card.shieldup{outline:2px solid var(--gold); outline-offset:-2px;}
+  .card.revealed{outline:2px dashed var(--gold); outline-offset:-2px;}
   .sfu{position:absolute; top:1px; left:1px; z-index:3; font:700 7px "Saira Condensed",sans-serif;
     background:var(--gold); color:#1a1408; padding:0 3px; border-radius:3px; letter-spacing:.5px;}
   /* 進化・重なり */
@@ -520,6 +521,7 @@ function makeCard(c,zone){
   const stacked = c.under && c.under.length;
   if(stacked){ d.classList.add("stacked"); d.appendChild(el("div","evchip","×"+(c.under.length+1))); }
   else if(c.evo){ d.appendChild(el("div","evchip","進")); }
+  if(c.reveal){ d.classList.add("revealed"); }
   attachPointer(d,c,zone); return d;
 }
 function makeBack(){return el("div","card back");}
@@ -530,6 +532,7 @@ function staticCard(c){
   d.innerHTML=cardInner(c);
   if(c.under && c.under.length){ d.classList.add("stacked"); d.appendChild(el("div","evchip","×"+(c.under.length+1))); }
   else if(c.evo){ d.appendChild(el("div","evchip","進")); }
+  if(c.reveal){ d.classList.add("revealed"); }
   return d;
 }
 function emptyHint(t){const e=el("div","empty-slot"); e.textContent=t; e.style.whiteSpace="pre-line"; return e;}
@@ -541,7 +544,10 @@ function renderSide(pl){
   const st=P[pl];
   let l=laneEl(pl,"battle"); l.innerHTML=""; if(!st.battle.length) l.appendChild(emptyHint("バトル\nゾーン")); st.battle.forEach(c=>l.appendChild(makeCard(c,"battle")));
   l=laneEl(pl,"mana"); l.innerHTML=""; if(!st.mana.length) l.appendChild(emptyHint("マナ")); st.mana.forEach(c=>l.appendChild(makeCard(c,"mana")));
-  l=laneEl(pl,"hand"); l.innerHTML=""; if(!st.hand.length) l.appendChild(emptyHint("手札なし")); st.hand.forEach(c=>l.appendChild(makeCard(c,"hand")));
+  l=laneEl(pl,"hand"); l.innerHTML="";
+  if(!st.hand.length) l.appendChild(emptyHint("手札なし"));
+  else if(ONLINE && pl==="opp") st.hand.forEach(c=>{ if(c.reveal) l.appendChild(staticCard(c)); else l.appendChild(makeBack()); });
+  else st.hand.forEach(c=>l.appendChild(makeCard(c,"hand")));
 
   l=laneEl(pl,"shields"); l.innerHTML=""; if(!st.shields.length) l.appendChild(emptyHint("シールド\nなし"));
   st.shields.forEach(c=>{
@@ -566,7 +572,10 @@ function renderSide(pl){
   } else gp.appendChild(emptyHint("墓地\n空"));
 
   const lr=document.querySelector(`[data-lookrow="${pl}"]`); const ll=laneEl(pl,"look"); ll.innerHTML="";
-  if(st.look.length){ lr.style.display=""; st.look.forEach(c=>ll.appendChild(makeCard(c,"look"))); } else lr.style.display="none";
+  if(st.look.length){ lr.style.display="";
+    if(ONLINE && pl==="opp") st.look.forEach(c=>{ if(c.reveal) ll.appendChild(staticCard(c)); else ll.appendChild(makeBack()); });
+    else st.look.forEach(c=>ll.appendChild(makeCard(c,"look")));
+  } else lr.style.display="none";
 
   setCnt(pl,"shields",st.shields.length); setCnt(pl,"mana",st.mana.length); setCnt(pl,"hand",st.hand.length); setCnt(pl,"look",st.look.length);
 }
@@ -578,7 +587,7 @@ function moveCard(id,to){
   const f=loc(id); if(!f) return; const st=P[f.pl];
   const c=st[f.zone].splice(f.idx,1)[0];
   if(c.under && c.under.length){ c.under.forEach(u=>{u.under=null; st.grave.push(u);}); c.under=null; toast("進化元を墓地へ"); }
-  c.faceUp=false;
+  c.faceUp=false; c.reveal=false;
   if(to==="battle"){ c.tapped=false; st.battle.push(c); }
   else if(to==="mana"){ c.tapped=isMulti(c); st.mana.push(c); }   // 多色はタップイン
   else { c.tapped=false;
@@ -686,6 +695,11 @@ function openSheet(c,zone){
     A.push(act("墓地に置く","捨てる",()=>{moveCard(c.id,"grave"); close();},"warn"));
     A.push(act("山札の上へ","",()=>{moveCard(c.id,"deckTop"); close();}));
     A.push(act("山札の下へ","",()=>{moveCard(c.id,"deckBottom"); close();}));
+    if(ONLINE){
+      A.push(act(c.reveal?"見せるのをやめる":"相手に見せる", c.reveal?"非公開に戻す":"このカードを公開",()=>{toggleReveal(c.id); close();}));
+      A.push(act("手札をすべて見せる","全公開",()=>{revealHand(true); close();}));
+      A.push(act("手札の公開をすべて戻す","全非公開",()=>{revealHand(false); close();}));
+    }
   }
   if(zone==="battle"){
     A.push(act("墓地に置く","破壊／離れる",()=>{moveCard(c.id,"grave"); close();},"warn"));
@@ -728,6 +742,7 @@ function openSheet(c,zone){
     A.push(act("墓地に置く","",()=>{moveCard(c.id,"grave"); close();},"warn"));
     A.push(act("一括：シャッフルして山札下へ","見るゾーン全部を",()=>{const f=loc(c.id); if(f) bulkLook(f.pl,"deckBottom"); close();}));
     A.push(act("一括：まとめて墓地へ","見るゾーン全部を",()=>{const f=loc(c.id); if(f) bulkLook(f.pl,"grave"); close();},"warn"));
+    if(ONLINE) A.push(act(c.reveal?"見せるのをやめる":"相手に見せる", c.reveal?"非公開に戻す":"このカードを公開",()=>{toggleReveal(c.id); close();}));
   }
   if(c.evo) A.push(act("進化（重ねる）","場のクリーチャーに重ねる",()=>{evolvePick(c.id);}));
   if(zone!=="look") A.push(act("複製","同じカードを増やす",()=>{dupInPlay(c.id,zone); close();}));
@@ -876,6 +891,8 @@ function openLook(pl,n){
   render();
   toast(`${PLABEL[pl]}：山札の上${moved}枚を見るゾーンへ`);
 }
+function toggleReveal(id){ const f=loc(id); if(!f) return; if(ONLINE && f.pl!=="me"){ toast("自分のカードだけ公開できます"); return; } f.card.reveal=!f.card.reveal; render(); toast(f.card.reveal?"相手に見せています":"非公開に戻しました"); }
+function revealHand(show){ P.me.hand.forEach(c=>c.reveal=!!show); render(); toast(show?"手札をすべて公開しました":"手札の公開を戻しました"); }
 function bulkLook(pl,to){
   const look=P[pl].look; const n=look.length; if(!n){ toast("見るゾーンが空です"); return; }
   if(to==="deckBottom") shuffle(look);   // 山札下へはランダムな順で
@@ -1061,7 +1078,7 @@ function toast(m){const t=document.getElementById("toast"); t.textContent=m; t.c
 document.getElementById("btn-turn").onclick=startTurn;
 document.getElementById("btn-online").onclick=createRoom;
 document.getElementById("btn-copylink").onclick=copyInvite;
-document.getElementById("btn-online-new").onclick=onlineNewGame;
+document.getElementById("btn-online-new").onclick=startOnlineMatch;
 document.getElementById("btn-reset").onclick=()=>confirmSheet("新しいゲームを始めます。よろしいですか？","新ゲーム開始",newGame);
 document.getElementById("btn-help").onclick=()=>document.getElementById("modal-help").classList.add("show");
 document.getElementById("help-close").onclick=()=>document.getElementById("modal-help").classList.remove("show");
@@ -1082,7 +1099,7 @@ const firebaseConfig = {
   appId: "1:868505862435:web:c6c10a11b83cfd4c428c96"
 };
 let ONLINE=false, db=null, roomRef=null, mySeat=null, oppSeat=null;
-let applyingRemote=false, olInit=false, lastMetaActive=null, pushTimer=null, clientId=null;
+let applyingRemote=false, olInit=false, lastMetaActive=null, pushTimer=null, clientId=null, lastGen=null;
 
 function randomRoom(){ return Math.random().toString(36).slice(2,7).toUpperCase(); }
 function getClientId(){ try{ let c=localStorage.getItem("dm_client"); if(!c){ c=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem("dm_client",c);} return c; }catch(e){ return "c"+Date.now(); } }
@@ -1102,7 +1119,8 @@ function pushMine(){
   clearTimeout(pushTimer);
   pushTimer=setTimeout(()=>{ roomRef.child(mySeat).set(serializeSide(P.me)); }, 150);
 }
-function pushMeta(){ if(!ONLINE||!roomRef) return; roomRef.child("meta").set({active:(active==="me"?mySeat:oppSeat), turn}); }
+function pushMineNow(){ if(ONLINE && mySeat && roomRef) roomRef.child(mySeat).set(serializeSide(P.me)); }
+function pushMeta(){ if(!ONLINE||!roomRef) return; roomRef.child("meta").set({active:(active==="me"?mySeat:oppSeat), turn, gen:(lastGen||1)}); }
 
 function initOnline(room){
   if(!window.firebase){ setStatus('<span class="ol-dot off"></span>オンライン機能は公開URL（pages.dev）で動きます'); newGame(); return; }
@@ -1112,7 +1130,6 @@ function initOnline(room){
   setStatus('<span class="ol-dot wait"></span>接続中…');
   document.getElementById("btn-online").style.display="none";
   document.getElementById("btn-copylink").style.display="";
-  document.getElementById("btn-online-new").style.display="";
   document.getElementById("btn-turn").textContent="ターンを相手に渡す";
 
   roomRef.child("seats").transaction(cur=>{
@@ -1128,6 +1145,9 @@ function initOnline(room){
     }
     mySeat = seats.host===clientId ? "host":"guest";
     oppSeat = mySeat==="host" ? "guest":"host";
+    const nb=document.getElementById("btn-online-new");
+    if(mySeat==="host"){ nb.style.display=""; nb.textContent="対戦開始（両者に配り直し）"; }
+    else nb.style.display="none";
     // 退室時に自分の席を解放
     roomRef.child("seats/"+mySeat).onDisconnect().remove();
     subscribeRoom(room);
@@ -1137,38 +1157,48 @@ function subscribeRoom(room){
   roomRef.on("value", snap=>{
     const data=snap.val()||{};
     applyingRemote=true;
+    let doPush=false;
     // 自分の側：初回のみ復元 or 配布
     if(!olInit){
       if(data[mySeat]) P.me=deserializeSide(data[mySeat]);
-      else { dealMineOnline(); roomRef.child(mySeat).set(serializeSide(P.me)); }
+      else { dealMineOnline(); doPush=true; }
     }
     // 相手の側
     P.opp = data[oppSeat] ? deserializeSide(data[oppSeat]) : emptyState();
-    // メタ（手番・ターン）
+    // メタ（手番・ターン・世代）
     let justMyTurn=false;
     if(data.meta){
       turn = data.meta.turn||1;
       active = (data.meta.active===mySeat) ? "me":"opp";
+      const g = data.meta.gen||0;
+      if(olInit && lastGen!==null && g!==lastGen){ dealMineOnline(); doPush=true; toast("対戦開始：山札を配り直しました"); }
+      lastGen = g;
       if(data.meta.active===mySeat && lastMetaActive && lastMetaActive!==mySeat) justMyTurn=true;
       lastMetaActive = data.meta.active;
     } else if(mySeat==="host"){
-      active="me"; turn=1; lastMetaActive="host"; roomRef.child("meta").set({active:"host",turn:1});
+      active="me"; turn=1; lastMetaActive="host"; lastGen=1; roomRef.child("meta").set({active:"host",turn:1,gen:1});
     }
     if(!olInit){ olInit=true; buildBoard(); }
-    if(justMyTurn){ [...P.me.battle, ...P.me.mana].forEach(c=>c.tapped=false); }
+    if(justMyTurn){ [...P.me.battle, ...P.me.mana].forEach(c=>c.tapped=false); doPush=true; }
     render();                 // applyingRemote=true のままなので pushMine は抑止される
     applyingRemote=false;
-    if(justMyTurn){ pushMine(); toast(`ターン${turn}：あなたの手番（アンタップ）`); }
+    if(doPush) pushMineNow();
+    if(justMyTurn) toast(`ターン${turn}：あなたの手番（アンタップ）`);
     const oppThere = !!data[oppSeat] || (data.seats && data.seats[oppSeat]);
     setStatus(`<span class="ol-dot ${oppThere?'on':'wait'}"></span>部屋 <b>${room}</b> ・ あなた=${mySeat==='host'?'ホスト':'ゲスト'} ・ ${oppThere?'相手 接続中':'相手を待っています'}`);
   });
 }
 function createRoom(){ location.href = location.pathname + "?room=" + randomRoom(); }
 function copyInvite(){ const u=location.href; try{ navigator.clipboard.writeText(u); toast("招待リンクをコピーしました"); }catch(e){ toast(u); } }
-function onlineNewGame(){
+function startOnlineMatch(){
   if(!ONLINE) return;
-  confirmSheet("自分の山札を引き直します（相手の盤面はそのまま）。よろしいですか？","引き直す",()=>{
-    dealMineOnline(); pushMine(); render(); toast("自分の盤面をリセットしました");
+  if(mySeat!=="host"){ toast("対戦開始はホストが押します"); return; }
+  confirmSheet("両プレイヤーの山札を配り直して対戦を開始します。よろしいですか？","対戦開始",()=>{
+    const g=(lastGen||0)+1; lastGen=g;
+    dealMineOnline(); pushMineNow();
+    active="me"; turn=1; lastMetaActive="host";
+    roomRef.child("meta").set({active:"host",turn:1,gen:g});
+    render(); toast("対戦を開始しました（両者に配り直し）");
   });
 }
 
