@@ -87,6 +87,7 @@
   }
   .row.drop-ok{border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 0 22px -4px var(--gold-soft) inset;}
   .look-row{border:1px dashed var(--gold); background:linear-gradient(180deg,rgba(200,162,74,.1),rgba(20,25,36,.4));}
+  .check-row{border:1px dashed #d77f8a; background:linear-gradient(180deg,rgba(215,127,138,.14),rgba(20,25,36,.4));}
   .ztag{
     position:absolute; top:8px; left:11px;
     font-family:"Saira Condensed",sans-serif; font-weight:700; font-size:12px; letter-spacing:2.5px;
@@ -445,7 +446,7 @@ function buildDeck(pl){
     type:d.type||"creature", power:(d.power===""?null:d.power), tapped:false, img:d.img||null, evo:!!d.evo, under:null}));
 }
 
-const ZONES=["deck","hand","mana","battle","shields","grave","look"];
+const ZONES=["deck","hand","mana","battle","shields","grave","look","check"];
 function emptyState(){const s={}; ZONES.forEach(z=>s[z]=[]); return s;}
 let P={me:emptyState(), opp:emptyState()};
 let active="me"; let turn=1;
@@ -461,7 +462,7 @@ function updateHud(){
 
 /* 盤面HTMLを生成（相手=上で逆順、自分=下） */
 function sideHTML(pl){
-  const order = pl==="opp" ? ["look","hand","shields","mana","battle"] : ["battle","mana","shields","hand","look"];
+  const order = pl==="opp" ? ["look","check","hand","shields","mana","battle"] : ["battle","mana","shields","hand","check","look"];
   const rows = order.map(z=>rowHTML(pl,z)).join("");
   return `<section class="side ${pl}" data-side="${pl}">
     <div class="side-tag">${PLABEL[pl]}</div>
@@ -486,6 +487,9 @@ function rowHTML(pl,zone){
   if(zone==="look") return `<section class="row look-row" data-pl="${pl}" data-dropzone="look" data-lookrow="${pl}" style="display:none">
     <div class="ztag saira">VIEW <em>見るゾーン</em> <span class="count" data-cnt="${pl}-look"></span></div>
     <div class="lane" data-pl="${pl}" data-zone="look"></div></section>`;
+  if(zone==="check") return `<section class="row check-row" data-pl="${pl}" data-dropzone="check" data-checkrow="${pl}" style="display:none">
+    <div class="ztag saira">SHIELD CHECK <em>シールドチェック</em> <span class="count" data-cnt="${pl}-check"></span></div>
+    <div class="lane" data-pl="${pl}" data-zone="check"></div></section>`;
   return "";
 }
 function buildBoard(){
@@ -578,7 +582,13 @@ function renderSide(pl){
     else st.look.forEach(c=>ll.appendChild(makeCard(c,"look")));
   } else lr.style.display="none";
 
-  setCnt(pl,"shields",st.shields.length); setCnt(pl,"mana",st.mana.length); setCnt(pl,"hand",st.hand.length); setCnt(pl,"look",st.look.length);
+  const cr=document.querySelector(`[data-checkrow="${pl}"]`); const cl=laneEl(pl,"check"); cl.innerHTML="";
+  if(st.check && st.check.length){ cr.style.display="";
+    if(ONLINE && pl==="opp") st.check.forEach(()=>cl.appendChild(makeBack()));
+    else st.check.forEach(c=>cl.appendChild(makeCard(c,"check")));
+  } else cr.style.display="none";
+
+  setCnt(pl,"shields",st.shields.length); setCnt(pl,"mana",st.mana.length); setCnt(pl,"hand",st.hand.length); setCnt(pl,"look",st.look.length); setCnt(pl,"check",st.check?st.check.length:0);
 }
 
 /* ===== 移動（所有プレイヤー内で完結） ===== */
@@ -602,6 +612,32 @@ function moveCard(id,to){
 function shieldFaceUp(id){
   const f=loc(id); if(!f) return; const st=P[f.pl];
   const c=st[f.zone].splice(f.idx,1)[0]; c.tapped=false; c.faceUp=true; st.shields.push(c); render(); toast("表向きでシールドに追加");
+}
+function breakShield(id, mode){
+  const f=loc(id); if(!f || f.zone!=="shields") return;
+  if(ONLINE && f.pl==="opp"){
+    // 相手のシールドは直接いじれないので、相手クライアントに指示を送る
+    if(roomRef) roomRef.child("cmd").set({id:Date.now()+"_"+Math.random().toString(36).slice(2,6), from:mySeat, action:mode, shieldId:id});
+    toast(mode==="break"?"シールドをブレイクしました":"シールドを破壊しました");
+    return;
+  }
+  const st=P[f.pl]; const c=st.shields.splice(f.idx,1)[0]; c.faceUp=false; c.reveal=false; c.under=null;
+  if(mode==="break"){ c.tapped=false; st.check.push(c); toast("シールドをチェックゾーンへ"); }
+  else { st.grave.push(c); toast("シールドを破壊（墓地へ）"); }
+  render();
+}
+function openShieldAttackMenu(id){
+  const sheet=document.getElementById("sheet");
+  sheet.innerHTML=`<div class="sheet-h"><div class="mini card back" style="width:30px;height:43px;border-radius:5px"></div>
+    <div><div class="t">相手のシールド</div><div class="s">攻撃：どうする？</div></div></div>
+    <div class="acts">
+      <button class="act" id="sh-break">ブレイクする<small>相手のチェックゾーンへ</small></button>
+      <button class="act warn" id="sh-destroy">破壊する<small>そのまま墓地へ</small></button>
+      <button class="act" id="sh-cancel">キャンセル</button></div>`;
+  document.getElementById("scrim").classList.add("show");
+  document.getElementById("sh-break").onclick=()=>{ breakShield(id,"break"); close(); };
+  document.getElementById("sh-destroy").onclick=()=>{ breakShield(id,"destroy"); close(); };
+  document.getElementById("sh-cancel").onclick=close;
 }
 function toggleTap(id){const f=loc(id); if(!f) return;
   if(f.zone!=="battle"&&f.zone!=="mana"){toast("タップできるのはバトル/マナのみ"); return;}
@@ -677,7 +713,10 @@ function openDetail(c){
 
 /* ===== アクションシート ===== */
 function openSheet(c,zone){
-  if(ONLINE){ const f=loc(c.id); if(f && f.pl==="opp"){ openDetail(c); return; } }
+  if(ONLINE){ const f=loc(c.id); if(f && f.pl==="opp"){
+    if(zone==="shields" && !c.faceUp){ openShieldAttackMenu(c.id); return; }
+    openDetail(c); return;
+  } }
   const sheet=document.getElementById("sheet");
   const tappable=(zone==="battle"||zone==="mana"); const faceDown=(zone==="shields");
   const sw=swatch(c); const multiNote=isMulti(c)?"（多色）":"";
@@ -729,10 +768,19 @@ function openSheet(c,zone){
     A.push(act("山札に戻す","",()=>{moveCard(c.id,"deckTop"); close();}));
   }
   if(zone==="shields"){
-    A.push(act("手札に加える","ブレイク",()=>{moveCard(c.id,"hand"); close(); toast("シールドを手札に");}));
+    A.push(act("ブレイクする","チェックゾーンへ",()=>{breakShield(c.id,"break"); close();}));
+    A.push(act("破壊する","そのまま墓地へ",()=>{breakShield(c.id,"destroy"); close();},"warn"));
+    A.push(act("手札に加える","",()=>{moveCard(c.id,"hand"); close(); toast("シールドを手札に");}));
     A.push(act("中身を見る","",()=>{close(); toast(`${civLabel(c)} / ${c.name}${c.power!=null?' / '+c.power.toLocaleString():''}`);}));
     A.push(act("バトルゾーンに出す","",()=>{moveCard(c.id,"battle"); close();}));
     A.push(act("墓地に置く","",()=>{moveCard(c.id,"grave"); close();},"warn"));
+  }
+  if(zone==="check"){
+    A.push(act("バトルゾーンに出す","トリガー発動など",()=>{moveCard(c.id,"battle"); close();}));
+    A.push(act("手札に加える","",()=>{moveCard(c.id,"hand"); close();}));
+    A.push(act("マナに置く", isMulti(c)?"多色はタップイン":"",()=>{moveCard(c.id,"mana"); close();}));
+    A.push(act("墓地に置く","",()=>{moveCard(c.id,"grave"); close();},"warn"));
+    A.push(act("山札の上へ","",()=>{moveCard(c.id,"deckTop"); close();}));
   }
   if(zone==="look"){
     A.push(act("山札の上へ","デッキトップに戻す",()=>{moveCard(c.id,"deckTop"); close();}));
@@ -746,7 +794,7 @@ function openSheet(c,zone){
     if(ONLINE) A.push(act(c.reveal?"見せるのをやめる":"相手に見せる", c.reveal?"非公開に戻す":"このカードを公開",()=>{toggleReveal(c.id); close();}));
   }
   if(c.evo) A.push(act("進化（重ねる）","場のクリーチャーに重ねる",()=>{evolvePick(c.id);}));
-  if(zone!=="look") A.push(act("複製","同じカードを増やす",()=>{dupInPlay(c.id,zone); close();}));
+  if(zone!=="look" && zone!=="check") A.push(act("複製","同じカードを増やす",()=>{dupInPlay(c.id,zone); close();}));
   sheet.innerHTML=head+`<div class="acts">${A.map(a=>a.html).join("")}</div>`;
   sheet.querySelectorAll(".act").forEach((b,i)=>b.onclick=A[i].fn);
   document.getElementById("scrim").classList.add("show");
@@ -1130,7 +1178,7 @@ const firebaseConfig = {
   appId: "1:982185230797:web:a02a10f428b4d8df620484"
 };
 let ONLINE=false, db=null, roomRef=null, mySeat=null, oppSeat=null;
-let applyingRemote=false, olInit=false, lastMetaActive=null, pushTimer=null, clientId=null, lastGen=null;
+let applyingRemote=false, olInit=false, lastMetaActive=null, pushTimer=null, clientId=null, lastGen=null, lastCmdId=null;
 
 function randomRoom(){ return Math.random().toString(36).slice(2,7).toUpperCase(); }
 function getClientId(){ try{ let c=localStorage.getItem("dm_client"); if(!c){ c=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem("dm_client",c);} return c; }catch(e){ return "c"+Date.now(); } }
@@ -1208,6 +1256,19 @@ function subscribeRoom(room){
       active="me"; turn=1; lastMetaActive="host"; lastGen=1; roomRef.child("meta").set({active:"host",turn:1,gen:1});
     }
     if(!olInit){ olInit=true; buildBoard(); }
+    // 相手からのシールド攻撃コマンド（ブレイク/破壊）を自分のシールドに適用
+    if(data.cmd && data.cmd.id!==lastCmdId){
+      const isNew = (lastCmdId!==null);
+      const cmd = data.cmd; lastCmdId = cmd.id;
+      if(isNew && cmd.from===oppSeat){
+        const i=P.me.shields.findIndex(c=>c.id===cmd.shieldId);
+        if(i>=0){ const c=P.me.shields.splice(i,1)[0]; c.faceUp=false; c.reveal=false; c.under=null;
+          if(cmd.action==="break"){ c.tapped=false; P.me.check.push(c); toast("シールドがブレイクされました（チェックゾーンへ）"); }
+          else { P.me.grave.push(c); toast("シールドが破壊されました"); }
+          doPush=true;
+        }
+      }
+    }
     if(justMyTurn){ [...P.me.battle, ...P.me.mana].forEach(c=>c.tapped=false); doPush=true; }
     render();                 // applyingRemote=true のままなので pushMine は抑止される
     applyingRemote=false;
