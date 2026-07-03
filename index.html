@@ -1131,16 +1131,6 @@ const firebaseConfig = {
 };
 let ONLINE=false, db=null, roomRef=null, mySeat=null, oppSeat=null;
 let applyingRemote=false, olInit=false, lastMetaActive=null, pushTimer=null, clientId=null, lastGen=null;
-let oppPresent=false, oppSeen=false, roomName=null;
-function updateOnlineStatus(){
-  if(!ONLINE || !roomName || !mySeat) return;
-  const who = mySeat==="host" ? "ホスト" : "ゲスト";
-  let dot, msg;
-  if(oppPresent){ dot="on"; msg="相手 接続中"; }
-  else if(oppSeen){ dot="off"; msg="相手の接続が切れたようです（再接続を待っています）"; }
-  else { dot="wait"; msg="相手を待っています"; }
-  setStatus(`<span class="ol-dot ${dot}"></span>部屋 <b>${roomName}</b> ・ あなた=${who} ・ ${msg}`);
-}
 
 function randomRoom(){ return Math.random().toString(36).slice(2,7).toUpperCase(); }
 function getClientId(){ try{ let c=localStorage.getItem("dm_client"); if(!c){ c=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem("dm_client",c);} return c; }catch(e){ return "c"+Date.now(); } }
@@ -1165,7 +1155,7 @@ function pushMeta(){ if(!ONLINE||!roomRef) return; roomRef.child("meta").set({ac
 
 function initOnline(room){
   if(!window.firebase){ setStatus('<span class="ol-dot off"></span>オンライン機能は公開URL（pages.dev）で動きます'); newGame(); return; }
-  ONLINE=true; clientId=getClientId(); roomName=room;
+  ONLINE=true; clientId=getClientId();
   try{ firebase.initializeApp(firebaseConfig); }catch(e){}
   db=firebase.database(); roomRef=db.ref("rooms/"+room);
   setStatus('<span class="ol-dot wait"></span>接続中…');
@@ -1189,21 +1179,6 @@ function initOnline(room){
     const nb=document.getElementById("btn-online-new");
     if(mySeat==="host"){ nb.style.display=""; nb.textContent="対戦開始（両者に配り直し）"; }
     else nb.style.display="none";
-    // 在席（presence）：接続時にオン、切断時に自動でオフ
-    const myPres=roomRef.child("presence/"+mySeat);
-    db.ref(".info/connected").on("value", s=>{
-      if(s.val()===true){
-        myPres.onDisconnect().set(false);
-        myPres.set(true);
-        roomRef.child("seats/"+mySeat).set(clientId); // 再接続時に席を確保し直す
-      }
-    });
-    // 相手の在席を監視
-    roomRef.child("presence/"+oppSeat).on("value", s=>{
-      oppPresent = (s.val()===true);
-      if(oppPresent) oppSeen=true;
-      updateOnlineStatus();
-    });
     subscribeRoom(room);
   });
 }
@@ -1238,8 +1213,8 @@ function subscribeRoom(room){
     applyingRemote=false;
     if(doPush) pushMineNow();
     if(justMyTurn) toast(`ターン${turn}：あなたの手番（アンタップ）`);
-    if(data[oppSeat] || (data.seats && data.seats[oppSeat])) oppSeen=true;
-    updateOnlineStatus();
+    const oppThere = !!data[oppSeat] || (data.seats && data.seats[oppSeat]);
+    setStatus(`<span class="ol-dot ${oppThere?'on':'wait'}"></span>部屋 <b>${room}</b> ・ あなた=${mySeat==='host'?'ホスト':'ゲスト'} ・ ${oppThere?'相手 接続中':'相手を待っています'}`);
     // 自己修復：自分の場が空（カードが無い）なら配り直す
     const myCount = ZONES.reduce((n,z)=>n+(P.me[z]?P.me[z].length:0),0);
     if(olInit && mySeat && myCount===0 && DECKS.me && DECKS.me.length){
