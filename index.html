@@ -1050,7 +1050,16 @@ document.getElementById("ed-copyother").onclick=()=>{
 };
 document.getElementById("ed-add").onclick=addDef;
 document.getElementById("ed-close").onclick=()=>document.getElementById("modal-edit").classList.remove("show");
-document.getElementById("ed-apply").onclick=()=>{DECKS[editTarget]=normalizeDef(D()); saveDeckDef(); document.getElementById("modal-edit").classList.remove("show"); newGame(); toast("登録したデッキで開始");};
+document.getElementById("ed-apply").onclick=()=>{
+  DECKS[editTarget]=normalizeDef(D()); saveDeckDef();
+  document.getElementById("modal-edit").classList.remove("show");
+  if(ONLINE){
+    if(mySeat==="host"){ startOnlineMatch(); }
+    else { dealMineOnline(); pushMineNow(); render(); toast("デッキを保存しました（ホストが対戦開始を押すと両者リセットされます）"); }
+  } else {
+    newGame(); toast("登録したデッキで開始");
+  }
+};
 document.getElementById("ed-default").onclick=()=>confirmSheet(`「${editTarget==="me"?"自分":"相手"}のデッキ」を初期デッキに戻します（内容は消えます）`,"初期デッキに戻す",()=>{DECKS[editTarget]=defaultDeckDef(); saveDeckDef(); renderEditor();});
 document.getElementById("modal-edit").addEventListener("click",e=>{if(e.target.id==="modal-edit") e.currentTarget.classList.remove("show");});
 
@@ -1094,7 +1103,14 @@ document.getElementById("btn-turn").onclick=startTurn;
 document.getElementById("btn-online").onclick=createRoom;
 document.getElementById("btn-copylink").onclick=copyInvite;
 document.getElementById("btn-online-new").onclick=startOnlineMatch;
-document.getElementById("btn-reset").onclick=()=>confirmSheet("新しいゲームを始めます。よろしいですか？","新ゲーム開始",newGame);
+document.getElementById("btn-reset").onclick=()=>{
+  if(ONLINE){
+    if(mySeat==="host") startOnlineMatch();
+    else toast("オンラインでは、配り直し（対戦開始）はホストが押します");
+    return;
+  }
+  confirmSheet("新しいゲームを始めます。よろしいですか？","新ゲーム開始",newGame);
+};
 document.getElementById("btn-help").onclick=()=>document.getElementById("modal-help").classList.add("show");
 document.getElementById("help-close").onclick=()=>document.getElementById("modal-help").classList.remove("show");
 document.getElementById("modal-help").addEventListener("click",e=>{if(e.target.id==="modal-help") e.currentTarget.classList.remove("show");});
@@ -1224,6 +1240,11 @@ function subscribeRoom(room){
     if(justMyTurn) toast(`ターン${turn}：あなたの手番（アンタップ）`);
     if(data[oppSeat] || (data.seats && data.seats[oppSeat])) oppSeen=true;
     updateOnlineStatus();
+    // 自己修復：自分の場が空（カードが無い）なら配り直す
+    const myCount = ZONES.reduce((n,z)=>n+(P.me[z]?P.me[z].length:0),0);
+    if(olInit && mySeat && myCount===0 && DECKS.me && DECKS.me.length){
+      dealMineOnline(); pushMineNow(); render();
+    }
   });
 }
 function createRoom(){ location.href = location.pathname + "?room=" + randomRoom(); }
