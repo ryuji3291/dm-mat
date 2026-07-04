@@ -895,14 +895,61 @@ function openDeckMenu(pl){
     <div class="acts">
       <button class="act" id="d-draw">1枚ドロー<small>上から手札へ</small></button>
       <button class="act" id="d-look">◯枚見る<small>見るゾーンへ</small></button>
+      <button class="act" id="d-view">山札の中身を見る<small>リストから操作</small></button>
       <button class="act" id="d-mill">◯枚を墓地に<small>上から墓地へ</small></button>
       <button class="act" id="d-shuf">シャッフル<small>山札を混ぜる</small></button>
     </div>`;
   document.getElementById("scrim").classList.add("show");
   document.getElementById("d-draw").onclick=()=>{draw(pl,1); close();};
   document.getElementById("d-look").onclick=()=>{numberSheet("何枚見ますか？",3,P[pl].deck.length,(n)=>openLook(pl,n));};
+  document.getElementById("d-view").onclick=()=>{openDeckList(pl);};
   document.getElementById("d-mill").onclick=()=>{numberSheet("何枚墓地に置きますか？",1,P[pl].deck.length,(n)=>mill(pl,n));};
   document.getElementById("d-shuf").onclick=()=>{shuffle(P[pl].deck); close(); render(); toast("山札をシャッフル");};
+}
+function openDeckList(pl){
+  const d=P[pl].deck;
+  if(!d.length){ toast("山札は空です"); return; }
+  const sheet=document.getElementById("sheet");
+  const rows=d.map((c,i)=>{
+    const sw=swatch(c);
+    return `<button class="act full grave-item" data-id="${c.id}" style="flex-direction:row;align-items:center;gap:9px">
+      <span style="color:var(--ink-dim);font:700 10px 'Saira Condensed';flex:0 0 auto;min-width:20px">${i+1}</span>
+      <span class="mini ${sw.cls}" style="width:26px;height:37px;border-radius:4px;flex:0 0 auto;${sw.style}"></span>
+      <span style="flex:1;text-align:left;min-width:0">${esc(c.name)}<small style="display:block">${civLabel(c)} ・ コスト${c.cost}${c.power!=null?' ・ '+c.power.toLocaleString():' ・ 呪文/城'}</small></span>
+    </button>`;
+  }).join("");
+  sheet.innerHTML=`<div class="sheet-h"><div><div class="t">山札の中身（${PLABEL[pl]}）</div><div class="s">${d.length}枚 ・ 上から順 ・ カードを選んで操作</div></div></div>
+    <div class="acts" style="max-height:56vh;overflow:auto">${rows}</div>`;
+  document.getElementById("scrim").classList.add("show");
+  sheet.querySelectorAll(".grave-item").forEach(b=>b.onclick=()=>openDeckCardActions(pl, Number(b.dataset.id)));
+}
+function openDeckCardActions(pl,id){
+  const idx=P[pl].deck.findIndex(c=>c.id===id); if(idx<0) return;
+  const c=P[pl].deck[idx]; const sw=swatch(c);
+  const move=(to)=>{ const card=P[pl].deck.splice(idx,1)[0]; card.faceUp=false; card.reveal=false; card.under=null;
+    shuffle(P[pl].deck);
+    if(to==="deckTop"){ card.tapped=false; P[pl].deck.unshift(card); }
+    else if(to==="deckBottom"){ card.tapped=false; P[pl].deck.push(card); }
+    else if(to==="battle"){ card.tapped=false; P[pl].battle.push(card); }
+    else if(to==="mana"){ card.tapped=isMulti(card); P[pl].mana.push(card); }
+    else { card.tapped=false; P[pl][to].push(card); }
+    render(); close();
+    toast({deckTop:"山札の一番上へ（残りシャッフル）",deckBottom:"山札の一番下へ（残りシャッフル）",hand:"手札へ（残りシャッフル）",grave:"墓地へ（残りシャッフル）",battle:"フィールドへ（残りシャッフル）"}[to]||"移動"); };
+  const A=[
+    act("詳細","大きく表示",()=>{close(); openDetail(c);}),
+    act("山札の一番上に置く","",()=>move("deckTop")),
+    act("山札の一番下に置く","",()=>move("deckBottom")),
+    act("手札に加える","",()=>move("hand")),
+    act("墓地に置く","",()=>move("grave"),"warn"),
+    act("フィールドに出す","バトルゾーンへ",()=>move("battle")),
+  ];
+  const sheet=document.getElementById("sheet");
+  sheet.innerHTML=`<div class="sheet-h"><div class="mini ${sw.cls}" style="width:30px;height:43px;border-radius:5px;${sw.style}"></div>
+    <div><div class="t">${esc(c.name)}</div><div class="s">${civLabel(c)} ・ コスト${c.cost}${c.power!=null?' ・ '+c.power.toLocaleString():' ・ 呪文/城'}</div></div></div>
+    <div class="acts">${A.map(a=>a.html).join("")}<button class="act" id="dl-back">一覧に戻る</button></div>`;
+  document.getElementById("scrim").classList.add("show");
+  sheet.querySelectorAll(".act").forEach((b,i)=>{ if(i<A.length) b.onclick=A[i].fn; });
+  document.getElementById("dl-back").onclick=()=>openDeckList(pl);
 }
 function numberSheet(title, def, max, onOk){
   if(max<1){ toast("山札にカードがありません"); return; }
