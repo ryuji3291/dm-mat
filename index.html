@@ -88,6 +88,9 @@
   .row.drop-ok{border-color:var(--gold); box-shadow:0 0 0 1px var(--gold), 0 0 22px -4px var(--gold-soft) inset;}
   .look-row{border:1px dashed var(--gold); background:linear-gradient(180deg,rgba(200,162,74,.1),rgba(20,25,36,.4));}
   .check-row{border:1px dashed #d77f8a; background:linear-gradient(180deg,rgba(215,127,138,.14),rgba(20,25,36,.4));}
+  .mana-tap{font:600 10px sans-serif; color:var(--ink-dim); margin-left:2px;}
+  .ztag-btn{font:600 10px sans-serif; color:var(--ink); background:#2a3346; border:1px solid var(--panel-edge); border-radius:5px; padding:3px 8px; margin-left:6px; cursor:pointer; vertical-align:middle;}
+  .ztag-btn:hover{border-color:var(--gold-soft);}
   .ztag{
     position:absolute; top:8px; left:11px;
     font-family:"Saira Condensed",sans-serif; font-weight:700; font-size:12px; letter-spacing:2.5px;
@@ -274,7 +277,7 @@
 <body>
 <header>
   <div class="brand"><b>DUEL MAT</b><span>2人対戦（ホットシート）</span></div>
-  <div id="turn-ind" class="turnind">ターン <b>1</b> ・ 手番 <b id="active-ind">自分</b></div>
+  <div id="turn-ind" class="turnind">自分 <b id="turn-me">1</b> ・ 相手 <b id="turn-opp">0</b> ・ 手番 <b id="active-ind">自分</b></div>
   <button class="tbtn gold" id="btn-turn">次のターンへ（手番交代）</button>
   <button class="tbtn" id="btn-edit">デッキ編集</button>
   <button class="tbtn ghost" id="btn-help">使い方</button>
@@ -449,11 +452,12 @@ function buildDeck(pl){
 const ZONES=["deck","hand","mana","battle","shields","grave","look","check"];
 function emptyState(){const s={}; ZONES.forEach(z=>s[z]=[]); return s;}
 let P={me:emptyState(), opp:emptyState()};
-let active="me"; let turn=1;
+let active="me"; let turn=1; let turnMe=1, turnOpp=0; let tHost=1, tGuest=0;
 const PLABEL={me:"自分", opp:"相手"};
 
 function updateHud(){
-  const t=document.querySelector("#turn-ind b"); if(t) t.textContent=turn;
+  const tm=document.getElementById("turn-me"); if(tm) tm.textContent=turnMe;
+  const to=document.getElementById("turn-opp"); if(to) to.textContent=turnOpp;
   const a=document.getElementById("active-ind"); if(a) a.textContent=PLABEL[active];
   const sm=document.querySelector(".side.me"), so=document.querySelector(".side.opp");
   if(sm) sm.classList.toggle("is-active",active==="me");
@@ -475,7 +479,7 @@ function rowHTML(pl,zone){
     <div class="split"><div class="lane tappable" data-pl="${pl}" data-zone="battle"></div>
     <div class="pile-slot"><div class="lbl">墓地</div><div data-pl="${pl}" data-grave data-dropzone="grave"></div></div></div></section>`;
   if(zone==="mana") return `<section class="row" data-pl="${pl}" data-dropzone="mana">
-    <div class="ztag saira">MANA ZONE <em>マナゾーン</em> <span class="count" data-cnt="${pl}-mana"></span></div>
+    <div class="ztag saira">MANA ZONE <em>マナゾーン</em> <span class="count" data-cnt="${pl}-mana"></span> <span class="mana-tap" data-manatap="${pl}"></span> <button class="ztag-btn" data-manamenu="${pl}">操作</button></div>
     <div class="lane tappable" data-pl="${pl}" data-zone="mana"></div></section>`;
   if(zone==="shields") return `<section class="row" data-pl="${pl}" data-dropzone="shields">
     <div class="ztag saira">SHIELDS <em>シールド</em> <span class="count" data-cnt="${pl}-shields"></span></div>
@@ -504,7 +508,7 @@ function dealFor(pl){
   for(let i=0;i<5 && P[pl].deck.length;i++) P[pl].hand.push(P[pl].deck.shift());
 }
 function newGame(){
-  turn=1; active="me";
+  active = (Math.random()<0.5) ? "me" : "opp"; turnMe=(active==="me")?1:0; turnOpp=(active==="opp")?1:0;
   dealFor("me"); dealFor("opp");
   buildBoard(); render(); toast("新ゲーム：両者 山札40 → シールド5・手札5");
 }
@@ -549,6 +553,10 @@ function renderSide(pl){
   const st=P[pl];
   let l=laneEl(pl,"battle"); l.innerHTML=""; if(!st.battle.length) l.appendChild(emptyHint("バトル\nゾーン")); st.battle.forEach(c=>l.appendChild(makeCard(c,"battle")));
   l=laneEl(pl,"mana"); l.innerHTML=""; if(!st.mana.length) l.appendChild(emptyHint("マナ")); st.mana.forEach(c=>l.appendChild(makeCard(c,"mana")));
+  const mt=document.querySelector(`[data-manatap="${pl}"]`);
+  if(mt){ const tapN=st.mana.filter(c=>c.tapped).length; const unN=st.mana.length-tapN; mt.textContent=`（タップ ${tapN} / アンタップ ${unN}）`; }
+  const mm=document.querySelector(`[data-manamenu="${pl}"]`);
+  if(mm){ if(ONLINE && pl==="opp") mm.style.display="none"; else { mm.style.display=""; mm.onclick=()=>openManaMenu(pl); } }
   l=laneEl(pl,"hand"); l.innerHTML="";
   if(!st.hand.length) l.appendChild(emptyHint("手札なし"));
   else if(ONLINE && pl==="opp") st.hand.forEach(c=>{ if(c.reveal){ const f=staticCard(c); f.style.cursor="pointer"; f.onclick=()=>openDetail(c); l.appendChild(f); } else l.appendChild(makeBack()); });
@@ -735,6 +743,7 @@ function openSheet(c,zone){
     A.push(act("墓地に置く","捨てる",()=>{moveCard(c.id,"grave"); close();},"warn"));
     A.push(act("山札の上へ","",()=>{moveCard(c.id,"deckTop"); close();}));
     A.push(act("山札の下へ","",()=>{moveCard(c.id,"deckBottom"); close();}));
+    A.push(act("ランダムで手札を1枚捨てる","手札からランダム",()=>{const f=loc(c.id); discardRandom(f?f.pl:"me"); close();},"warn"));
     if(ONLINE){
       A.push(act(c.reveal?"見せるのをやめる":"相手に見せる", c.reveal?"非公開に戻す":"このカードを公開",()=>{toggleReveal(c.id); close();}));
       A.push(act("手札をすべて見せる","全公開",()=>{revealHand(true); close();}));
@@ -887,6 +896,32 @@ function pullFromStack(topId,cardId,to){
 }
 
 /* ===== 山札メニュー ===== */
+function openManaMenu(pl){
+  if(ONLINE && pl==="opp"){ toast("相手のマナは操作できません"); return; }
+  const st=P[pl]; const tapN=st.mana.filter(c=>c.tapped).length;
+  const sheet=document.getElementById("sheet");
+  sheet.innerHTML=`<div class="sheet-h"><div><div class="t">マナゾーン（${PLABEL[pl]}）</div><div class="s">${st.mana.length}枚 ・ タップ ${tapN} / アンタップ ${st.mana.length-tapN}</div></div></div>
+    <div class="acts">
+      <button class="act" id="m-tapall">すべてタップ<small>マナを全部横向きに</small></button>
+      <button class="act" id="m-untapall">すべてアンタップ<small>マナを全部縦向きに</small></button>
+      <button class="act" id="m-fromdeck">山札の一番上をマナに<small>チャージ</small></button>
+    </div>`;
+  document.getElementById("scrim").classList.add("show");
+  document.getElementById("m-tapall").onclick=()=>{ st.mana.forEach(c=>c.tapped=true); render(); close(); toast("マナをすべてタップ"); };
+  document.getElementById("m-untapall").onclick=()=>{ st.mana.forEach(c=>c.tapped=false); render(); close(); toast("マナをすべてアンタップ"); };
+  document.getElementById("m-fromdeck").onclick=()=>{ deckTopToMana(pl); close(); };
+}
+function deckTopToMana(pl){
+  const st=P[pl]; if(!st.deck.length){ toast("山札が空です"); return; }
+  const c=st.deck.shift(); c.faceUp=false; c.reveal=false; c.under=null; c.tapped=isMulti(c); st.mana.push(c);
+  render(); toast("山札の一番上をマナに置きました");
+}
+function discardRandom(pl){
+  const st=P[pl]; if(!st.hand.length){ toast("手札がありません"); return; }
+  const i=Math.floor(Math.random()*st.hand.length);
+  const c=st.hand.splice(i,1)[0]; c.faceUp=false; c.reveal=false; c.under=null; st.grave.push(c);
+  render(); toast(`ランダムで1枚捨てました：${c.name}`);
+}
 function openDeckMenu(pl){
   if(ONLINE && pl==="opp"){ toast("相手の山札は操作できません"); return; }
   const sheet=document.getElementById("sheet");
@@ -896,6 +931,7 @@ function openDeckMenu(pl){
       <button class="act" id="d-draw">1枚ドロー<small>上から手札へ</small></button>
       <button class="act" id="d-look">◯枚見る<small>見るゾーンへ</small></button>
       <button class="act" id="d-view">山札の中身を見る<small>リストから操作</small></button>
+      <button class="act" id="d-tomana">一番上をマナに置く<small>チャージ</small></button>
       <button class="act" id="d-mill">◯枚を墓地に<small>上から墓地へ</small></button>
       <button class="act" id="d-shuf">シャッフル<small>山札を混ぜる</small></button>
     </div>`;
@@ -903,6 +939,7 @@ function openDeckMenu(pl){
   document.getElementById("d-draw").onclick=()=>{draw(pl,1); close();};
   document.getElementById("d-look").onclick=()=>{numberSheet("何枚見ますか？",3,P[pl].deck.length,(n)=>openLook(pl,n));};
   document.getElementById("d-view").onclick=()=>{openDeckList(pl);};
+  document.getElementById("d-tomana").onclick=()=>{deckTopToMana(pl); close();};
   document.getElementById("d-mill").onclick=()=>{numberSheet("何枚墓地に置きますか？",1,P[pl].deck.length,(n)=>mill(pl,n));};
   document.getElementById("d-shuf").onclick=()=>{shuffle(P[pl].deck); close(); render(); toast("山札をシャッフル");};
 }
@@ -1034,15 +1071,18 @@ function handleDrop(id,to){
 function startTurn(){
   if(ONLINE){
     if(active!=="me"){ toast("いまは相手の手番です"); return; }
-    active="opp"; turn++; pushMeta();
+    active="opp";
+    if(oppSeat==="host") tHost++; else tGuest++;
+    turnMe=(mySeat==="host"?tHost:tGuest); turnOpp=(mySeat==="host"?tGuest:tHost);
+    pushMeta();
     render(); toast("相手に手番を渡しました");
     return;
   }
   active = active==="me" ? "opp" : "me";
-  turn++;
+  if(active==="me") turnMe++; else turnOpp++;
   [...P[active].battle, ...P[active].mana].forEach(c=>c.tapped=false);
   render();
-  toast(`ターン${turn}：${PLABEL[active]}の手番（アンタップ）`);
+  toast(`${PLABEL[active]}のターン（アンタップ）`);
 }
 
 /* ===== デッキ編集 ===== */
@@ -1246,7 +1286,7 @@ function pushMine(){
   pushTimer=setTimeout(()=>{ roomRef.child(mySeat).set(serializeSide(P.me)); }, 150);
 }
 function pushMineNow(){ if(ONLINE && mySeat && roomRef) roomRef.child(mySeat).set(serializeSide(P.me)); }
-function pushMeta(){ if(!ONLINE||!roomRef) return; roomRef.child("meta").set({active:(active==="me"?mySeat:oppSeat), turn, gen:(lastGen||1)}); }
+function pushMeta(){ if(!ONLINE||!roomRef) return; roomRef.child("meta").set({active:(active==="me"?mySeat:oppSeat), gen:(lastGen||1), tHost, tGuest}); }
 
 function initOnline(room){
   if(!window.firebase){ setStatus('<span class="ol-dot off"></span>オンライン機能は公開URL（pages.dev）で動きます'); newGame(); return; }
@@ -1292,15 +1332,17 @@ function subscribeRoom(room){
     // メタ（手番・ターン・世代）
     let justMyTurn=false;
     if(data.meta){
-      turn = data.meta.turn||1;
       active = (data.meta.active===mySeat) ? "me":"opp";
+      tHost = (data.meta.tHost!=null)?data.meta.tHost:tHost;
+      tGuest = (data.meta.tGuest!=null)?data.meta.tGuest:tGuest;
+      turnMe = (mySeat==="host"?tHost:tGuest); turnOpp = (mySeat==="host"?tGuest:tHost);
       const g = data.meta.gen||0;
       if(olInit && lastGen!==null && g!==lastGen){ dealMineOnline(); doPush=true; toast("対戦開始：山札を配り直しました"); }
       lastGen = g;
       if(data.meta.active===mySeat && lastMetaActive && lastMetaActive!==mySeat) justMyTurn=true;
       lastMetaActive = data.meta.active;
     } else if(mySeat==="host"){
-      active="me"; turn=1; lastMetaActive="host"; lastGen=1; roomRef.child("meta").set({active:"host",turn:1,gen:1});
+      active="me"; tHost=1; tGuest=0; turnMe=1; turnOpp=0; lastMetaActive="host"; lastGen=1; roomRef.child("meta").set({active:"host",gen:1,tHost:1,tGuest:0});
     }
     if(!olInit){ olInit=true; buildBoard(); }
     // 相手からのシールド攻撃コマンド（ブレイク/破壊）を自分のシールドに適用
@@ -1320,7 +1362,7 @@ function subscribeRoom(room){
     render();                 // applyingRemote=true のままなので pushMine は抑止される
     applyingRemote=false;
     if(doPush) pushMineNow();
-    if(justMyTurn) toast(`ターン${turn}：あなたの手番（アンタップ）`);
+    if(justMyTurn) toast(`あなたのターン（アンタップ）`);
     const oppThere = !!data[oppSeat] || (data.seats && data.seats[oppSeat]);
     setStatus(`<span class="ol-dot ${oppThere?'on':'wait'}"></span>部屋 <b>${room}</b> ・ あなた=${mySeat==='host'?'ホスト':'ゲスト'} ・ ${oppThere?'相手 接続中':'相手を待っています'}`);
     // 自己修復：自分の場が空（カードが無い）なら配り直す
@@ -1335,12 +1377,16 @@ function copyInvite(){ const u=location.href; try{ navigator.clipboard.writeText
 function startOnlineMatch(){
   if(!ONLINE) return;
   if(mySeat!=="host"){ toast("対戦開始はホストが押します"); return; }
-  confirmSheet("両プレイヤーの山札を配り直して対戦を開始します。よろしいですか？","対戦開始",()=>{
+  confirmSheet("両プレイヤーの山札を配り直し、先攻・後攻をランダムで決めて開始します。","対戦開始",()=>{
     const g=(lastGen||0)+1; lastGen=g;
+    const first = Math.random()<0.5 ? "host":"guest";
+    tHost = (first==="host")?1:0; tGuest = (first==="guest")?1:0;
+    active = (first===mySeat)?"me":"opp";
+    turnMe=(mySeat==="host"?tHost:tGuest); turnOpp=(mySeat==="host"?tGuest:tHost);
+    lastMetaActive=first;
     dealMineOnline(); pushMineNow();
-    active="me"; turn=1; lastMetaActive="host";
-    roomRef.child("meta").set({active:"host",turn:1,gen:g});
-    render(); toast("対戦を開始しました（両者に配り直し）");
+    roomRef.child("meta").set({active:first, gen:g, tHost, tGuest});
+    render(); toast(first===mySeat?"対戦開始：あなたが先攻です":"対戦開始：あなたが後攻です");
   });
 }
 
