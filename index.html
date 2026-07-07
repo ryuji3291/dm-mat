@@ -155,6 +155,8 @@
     border:1px solid #46568c; display:flex; align-items:center; justify-content:center;
   }
   .card.back::after{content:"◇"; font-size:20px; color:var(--gold); opacity:.65; text-shadow:0 0 8px rgba(200,162,74,.5);}
+  .card.back.sleeved{background-size:cover; background-position:center;}
+  .card.back.sleeved::after{content:"";}
   .deck-pile .card.back{box-shadow:2px 2px 0 #1a2238, 4px 4px 0 #151b2e, 0 6px 10px rgba(0,0,0,.5);}
   .empty-slot{width:var(--card-w); height:var(--card-h); border-radius:var(--radius); border:1px dashed #3b4660;
     display:flex; align-items:center; justify-content:center; color:#54607e; font-size:10px; text-align:center; line-height:1.3;}
@@ -217,22 +219,41 @@
   .turnind b{font-family:"Saira Condensed",sans-serif; color:var(--gold); font-size:15px; margin-left:3px;}
 
   /* 詳細ビュー（カードを大きく、情報は下にテキスト） */
-  .mbox.detail{max-width:380px; text-align:center;}
+  .mbox.detail{max-width:520px; text-align:center;}
   #detail-card{display:flex; align-items:center; justify-content:center; padding:6px 0 2px;}
-  .bigcard{position:relative; width:300px; max-width:82vw; aspect-ratio:58/84; border-radius:16px; overflow:hidden;
-    box-shadow:0 14px 44px rgba(0,0,0,.6); border:1px solid rgba(0,0,0,.4);}
-  .bigcard.multi{border:2px solid var(--gold);}
+  .bigcard{position:relative; width:450px; max-width:88vw; aspect-ratio:58/84; border-radius:20px; overflow:hidden;
+    box-shadow:0 16px 50px rgba(0,0,0,.6); border:1px solid rgba(0,0,0,.4);}
+  .bigcard.multi{border:3px solid var(--gold);}
   .bcimg{position:absolute; inset:0; background-size:cover; background-position:center;}
-  .bctop{position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:11px 13px;}
-  .bcost{width:38px; height:38px; border-radius:50%; background:rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.6);
-    display:flex; align-items:center; justify-content:center; color:#fff; font:700 20px "Saira Condensed",sans-serif;}
-  .bdots{display:flex; gap:5px; flex-wrap:wrap; justify-content:flex-end; max-width:96px;}
-  .bdots .civdot{width:18px; height:18px;}
-  .d-name{font-weight:700; font-size:17px; margin-top:14px;}
-  .d-line{font-size:12.5px; color:var(--ink-dim); margin-top:5px;}
-  .d-line.dim{font-size:11px; opacity:.85;}
+  .bctop{position:absolute; top:0; left:0; right:0; display:flex; justify-content:space-between; padding:16px 19px;}
+  .bcost{width:56px; height:56px; border-radius:50%; background:rgba(0,0,0,.5); border:2px solid rgba(255,255,255,.6);
+    display:flex; align-items:center; justify-content:center; color:#fff; font:700 30px "Saira Condensed",sans-serif;}
+  .bdots{display:flex; gap:7px; flex-wrap:wrap; justify-content:flex-end; max-width:140px;}
+  .bdots .civdot{width:26px; height:26px;}
+  .d-name{font-weight:700; font-size:19px; margin-top:16px;}
+  .d-line{font-size:13.5px; color:var(--ink-dim); margin-top:6px;}
+  .d-line.dim{font-size:12px; opacity:.85;}
 
   .ed-tools{display:flex; flex-wrap:wrap; gap:7px; margin-bottom:12px;}
+  .sheet-grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(84px,1fr)); gap:8px; max-height:64vh; overflow:auto; padding:2px;}
+  #crop-stage{position:relative; width:100%; max-width:340px; margin:0 auto; aspect-ratio:1/1; background:#0b0e15; border-radius:10px; overflow:hidden; touch-action:none; cursor:grab;}
+  #crop-stage.dragging{cursor:grabbing;}
+  #crop-canvas{position:absolute; left:0; top:0; transform-origin:0 0;}
+  #crop-frame{position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:58%; aspect-ratio:58/80; border:2px solid var(--gold); box-shadow:0 0 0 2000px rgba(8,10,16,.62); border-radius:8px; pointer-events:none;}
+  .crop-ctrl{display:flex; align-items:center; gap:10px; margin:12px 0 4px; font:600 12px sans-serif; color:var(--ink-dim);}
+  .crop-ctrl input[type=range]{flex:1;}
+  .sheet-cell{position:relative; border-radius:8px; overflow:hidden; aspect-ratio:58/80; box-shadow:0 2px 6px rgba(0,0,0,.4); border:1px solid rgba(0,0,0,.4);}
+  .sheet-cell .sc-img{position:absolute; inset:0; background-size:cover; background-position:center;}
+  .sheet-cell .sc-cost{position:absolute; top:3px; left:3px; z-index:2; min-width:18px; height:18px; padding:0 3px; border-radius:9px; background:rgba(0,0,0,.6); border:1px solid rgba(255,255,255,.6); color:#fff; font:700 12px "Saira Condensed",sans-serif; display:flex; align-items:center; justify-content:center;}
+  .sheet-cell .sc-name{position:absolute; left:0; right:0; bottom:0; z-index:2; background:rgba(8,10,16,.72); color:#fff; font:600 9px sans-serif; padding:3px 4px; line-height:1.2; max-height:34%; overflow:hidden;}
+  .sheet-cell.multi{border:2px solid var(--gold);}
+  .stat-block{margin:10px 0 18px;}
+  .stat-block h4{margin:0 0 8px; font:700 13px sans-serif; color:var(--gold);}
+  .bar-row{display:flex; align-items:center; gap:8px; margin:5px 0; font:600 12px sans-serif;}
+  .bar-row .bar-lbl{flex:0 0 42px; text-align:right; color:var(--ink-dim);}
+  .bar-track{flex:1; display:block; background:#10141f; border-radius:5px; height:20px; overflow:hidden;}
+  .bar-fill{display:block; height:100%; border-radius:5px; min-width:2px; transition:width .3s; background:#e0a51f;}
+  .bar-row .bar-num{flex:0 0 30px; font-family:"Saira Condensed",sans-serif; color:var(--ink);}
   .ed-target{display:flex; gap:0; border:1px solid var(--panel-edge); border-radius:7px; overflow:hidden; margin-right:4px;}
   .et-btn{font:700 12px sans-serif; padding:8px 12px; background:#10141f; border:none; color:var(--ink-dim); cursor:pointer;}
   .et-btn.on{background:linear-gradient(180deg,#caa34d,#a07f33); color:#1a1408;}
@@ -306,6 +327,9 @@
       <button class="tbtn" id="ed-bulk">名前を一括入力</button>
       <button class="tbtn" id="ed-add">＋ カードを追加</button>
       <button class="tbtn" id="ed-copyother">もう一方にコピー</button>
+      <button class="tbtn" id="ed-sheet">デッキシート</button>
+      <button class="tbtn" id="ed-sleeve">デッキスリーブ</button>
+      <button class="tbtn" id="ed-stats">デッキ分析</button>
       <button class="tbtn" id="ed-backup">バックアップ/読込</button>
       <button class="tbtn" id="ed-default">初期デッキに戻す</button>
       <button class="tbtn gold" id="ed-apply">保存して新ゲーム</button>
@@ -340,6 +364,43 @@
       <button class="tbtn" id="backup-load">テキストから読み込む</button>
       <button class="tbtn ghost" id="backup-close">閉じる</button>
     </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-crop">
+  <div class="mbox">
+    <h3>スリーブの切り取り</h3>
+    <p class="sub">ドラッグで位置、スライダーで拡大を調整。枠（カード比率）の部分がスリーブになります。</p>
+    <div id="crop-stage">
+      <canvas id="crop-canvas"></canvas>
+      <div id="crop-frame"></div>
+    </div>
+    <div class="crop-ctrl">
+      <span>拡大</span>
+      <input type="range" id="crop-zoom" min="100" max="400" value="100">
+    </div>
+    <div class="row-btns">
+      <button class="tbtn gold" id="crop-ok">この範囲で決定</button>
+      <button class="tbtn ghost" id="crop-cancel">キャンセル</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal" id="modal-sheet">
+  <div class="mbox">
+    <h3>デッキシート</h3>
+    <p class="sub">登録画像をコスト順に並べた一覧です（画像未登録のカードは色付きの枠で表示）。</p>
+    <div id="sheet-grid" class="sheet-grid"></div>
+    <div class="row-btns"><button class="tbtn ghost" id="sheet-close">閉じる</button></div>
+  </div>
+</div>
+
+<div class="modal" id="modal-stats">
+  <div class="mbox">
+    <h3>デッキ分析</h3>
+    <p class="sub">コストカーブ（1〜8と9+）と、登録文明の枚数比率です。</p>
+    <div id="stats-body"></div>
+    <div class="row-btns"><button class="tbtn ghost" id="stats-close">閉じる</button></div>
   </div>
 </div>
 
@@ -396,6 +457,10 @@ let uid=1;
 const LS_KEY="dm_decks_v1";
 let DECKS={me:[],opp:[]};
 let editTarget="me";
+let SLEEVES={me:null,opp:null}; let oppSleeve=null; let SPECTATOR=false; let mySleeveView=null;
+function loadSleeves(){ try{const s=localStorage.getItem("dm_sleeves_v1"); if(s){const o=JSON.parse(s); return {me:o.me||null,opp:o.opp||null};}}catch(e){} return {me:null,opp:null}; }
+function saveSleeves(){ try{localStorage.setItem("dm_sleeves_v1",JSON.stringify(SLEEVES)); return true;}catch(e){return false;} }
+function pushSleeve(){ if(ONLINE&&roomRef&&mySeat) roomRef.child("sleeve/"+mySeat).set(SLEEVES.me||""); }
 function D(){return DECKS[editTarget];}
 
 function rnd(a){return a[Math.floor(Math.random()*a.length)];}
@@ -445,31 +510,32 @@ function loadDecks(){
 function saveDeckDef(){try{localStorage.setItem(LS_KEY,JSON.stringify(DECKS)); return true;}catch(e){return false;}}
 
 function buildDeck(pl){
-  return DECKS[pl].map(d=>({id:uid++,name:d.name,civs:civsOf(d).slice(),cost:d.cost,
-    type:d.type||"creature", power:(d.power===""?null:d.power), tapped:false, img:d.img||null, evo:!!d.evo, under:null}));
+  return DECKS[pl].map((d,di)=>({id:uid++,name:d.name,civs:civsOf(d).slice(),cost:d.cost,
+    type:d.type||"creature", power:(d.power===""?null:d.power), tapped:false, img:d.img||null, imgKey:(d.img?di:null), evo:!!d.evo, under:null}));
 }
 
 const ZONES=["deck","hand","mana","battle","shields","grave","look","check"];
 function emptyState(){const s={}; ZONES.forEach(z=>s[z]=[]); return s;}
 let P={me:emptyState(), opp:emptyState()};
-let active="me"; let turn=1; let turnMe=1, turnOpp=0; let tHost=1, tGuest=0;
+let active="me"; let turnMe=1, turnOpp=0; let tHost=1, tGuest=0;
 const PLABEL={me:"自分", opp:"相手"};
 
 function updateHud(){
   const tm=document.getElementById("turn-me"); if(tm) tm.textContent=turnMe;
   const to=document.getElementById("turn-opp"); if(to) to.textContent=turnOpp;
-  const a=document.getElementById("active-ind"); if(a) a.textContent=PLABEL[active];
+  const a=document.getElementById("active-ind"); if(a) a.textContent=SPECTATOR?(active==="me"?"ホスト":"ゲスト"):PLABEL[active];
   const sm=document.querySelector(".side.me"), so=document.querySelector(".side.opp");
   if(sm) sm.classList.toggle("is-active",active==="me");
   if(so) so.classList.toggle("is-active",active==="opp");
 }
 
 /* 盤面HTMLを生成（相手=上で逆順、自分=下） */
+function sideLabel(pl){ return SPECTATOR ? (pl==="me"?"ホスト":"ゲスト") : PLABEL[pl]; }
 function sideHTML(pl){
-  const order = pl==="opp" ? ["look","check","hand","shields","mana","battle"] : ["battle","mana","shields","hand","check","look"];
+  const order = pl==="opp" ? ["look","check","hand","mana","shields","battle"] : ["battle","shields","mana","hand","check","look"];
   const rows = order.map(z=>rowHTML(pl,z)).join("");
   return `<section class="side ${pl}" data-side="${pl}">
-    <div class="side-tag">${PLABEL[pl]}</div>
+    <div class="side-tag">${sideLabel(pl)}</div>
     ${rows}
   </section>`;
 }
@@ -533,7 +599,13 @@ function makeCard(c,zone){
   if(c.reveal){ d.classList.add("revealed"); }
   attachPointer(d,c,zone); return d;
 }
-function makeBack(){return el("div","card back");}
+function makeBack(pl){
+  const b=el("div","card back");
+  let sl=null;
+  if(pl){ if(SPECTATOR) sl=(pl==="me")?mySleeveView:oppSleeve; else if(ONLINE) sl=(pl==="me")?SLEEVES.me:oppSleeve; else sl=SLEEVES[pl]; }
+  if(sl){ b.classList.add("sleeved"); b.style.backgroundImage=`url('${sl}')`; }
+  return b;
+}
 function staticCard(c){
   const civs=civsOf(c); const multi=civs.length>1;
   const d=el("div",`card face ${multi?"multi":"c-"+civs[0]}${c.img?" hasimg":""}`);
@@ -556,21 +628,22 @@ function renderSide(pl){
   const mt=document.querySelector(`[data-manatap="${pl}"]`);
   if(mt){ const tapN=st.mana.filter(c=>c.tapped).length; const unN=st.mana.length-tapN; mt.textContent=`（タップ ${tapN} / アンタップ ${unN}）`; }
   const mm=document.querySelector(`[data-manamenu="${pl}"]`);
-  if(mm){ if(ONLINE && pl==="opp") mm.style.display="none"; else { mm.style.display=""; mm.onclick=()=>openManaMenu(pl); } }
+  if(mm){ if(SPECTATOR || (ONLINE && pl==="opp")) mm.style.display="none"; else { mm.style.display=""; mm.onclick=()=>openManaMenu(pl); } }
   l=laneEl(pl,"hand"); l.innerHTML="";
   if(!st.hand.length) l.appendChild(emptyHint("手札なし"));
-  else if(ONLINE && pl==="opp") st.hand.forEach(c=>{ if(c.reveal){ const f=staticCard(c); f.style.cursor="pointer"; f.onclick=()=>openDetail(c); l.appendChild(f); } else l.appendChild(makeBack()); });
+  else if(SPECTATOR) st.hand.forEach(c=>{ const f=staticCard(c); f.style.cursor="pointer"; f.onclick=()=>openDetail(c); l.appendChild(f); });
+  else if(ONLINE && pl==="opp") st.hand.forEach(c=>{ if(c.reveal){ const f=staticCard(c); f.style.cursor="pointer"; f.onclick=()=>openDetail(c); l.appendChild(f); } else l.appendChild(makeBack(pl)); });
   else st.hand.forEach(c=>l.appendChild(makeCard(c,"hand")));
 
   l=laneEl(pl,"shields"); l.innerHTML=""; if(!st.shields.length) l.appendChild(emptyHint("シールド\nなし"));
   st.shields.forEach(c=>{
     if(c.faceUp){ const f=makeCard(c,"shields"); f.classList.add("shieldup"); f.appendChild(el("div","sfu","盾")); l.appendChild(f); }
-    else { const b=makeBack(); b.dataset.id=c.id; b.dataset.zone="shields"; attachPointer(b,c,"shields"); l.appendChild(b); }
+    else { const b=makeBack(pl); b.dataset.id=c.id; b.dataset.zone="shields"; attachPointer(b,c,"shields"); l.appendChild(b); }
   });
 
   const dp=document.querySelector(`[data-pl="${pl}"][data-deck]`); dp.innerHTML="";
   if(st.deck.length){
-    const b=makeBack(); b.dataset.zone="deckpile"; b.onclick=()=>openDeckMenu(pl);
+    const b=makeBack(pl); b.dataset.zone="deckpile"; b.onclick=()=>openDeckMenu(pl);
     const badge=el("div","",String(st.deck.length));
     badge.style.cssText="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-family:'Saira Condensed';font-weight:700;font-size:18px;color:#fff;text-shadow:0 1px 4px #000;z-index:2;pointer-events:none";
     const w=el("div",""); w.style.position="relative"; w.appendChild(b); w.appendChild(badge); dp.appendChild(w);
@@ -586,13 +659,13 @@ function renderSide(pl){
 
   const lr=document.querySelector(`[data-lookrow="${pl}"]`); const ll=laneEl(pl,"look"); ll.innerHTML="";
   if(st.look.length){ lr.style.display="";
-    if(ONLINE && pl==="opp") st.look.forEach(c=>{ if(c.reveal){ const f=staticCard(c); f.style.cursor="pointer"; f.onclick=()=>openDetail(c); ll.appendChild(f); } else ll.appendChild(makeBack()); });
+    if(SPECTATOR || (ONLINE && pl==="opp")) st.look.forEach(c=>{ if(c.reveal){ const f=staticCard(c); f.style.cursor="pointer"; f.onclick=()=>openDetail(c); ll.appendChild(f); } else ll.appendChild(makeBack(pl)); });
     else st.look.forEach(c=>ll.appendChild(makeCard(c,"look")));
   } else lr.style.display="none";
 
   const cr=document.querySelector(`[data-checkrow="${pl}"]`); const cl=laneEl(pl,"check"); cl.innerHTML="";
   if(st.check && st.check.length){ cr.style.display="";
-    if(ONLINE && pl==="opp") st.check.forEach(()=>cl.appendChild(makeBack()));
+    if(SPECTATOR || (ONLINE && pl==="opp")) st.check.forEach(()=>cl.appendChild(makeBack(pl)));
     else st.check.forEach(c=>cl.appendChild(makeCard(c,"check")));
   } else cr.style.display="none";
 
@@ -601,7 +674,6 @@ function renderSide(pl){
 
 /* ===== 移動（所有プレイヤー内で完結） ===== */
 function loc(id){ for(const pl of ["me","opp"]) for(const z of ZONES){ const i=P[pl][z].findIndex(c=>c.id===id); if(i>=0) return {pl,zone:z,idx:i,card:P[pl][z][i]}; } return null; }
-function findCard(id){ const f=loc(id); return f?{zone:f.zone,idx:f.idx,card:f.card,pl:f.pl}:null; }
 function moveCard(id,to){
   const f=loc(id); if(!f) return; const st=P[f.pl];
   const c=st[f.zone].splice(f.idx,1)[0];
@@ -679,25 +751,6 @@ function stackOnto(evoId, targetId){
   P[ft.pl].battle.push(evo);
   render(); toast("進化：重ねました");
 }
-function removeTop(id){
-  const f=loc(id); if(f.zone!=="battle") return; const st=P[f.pl];
-  const top=st.battle[f.idx];
-  if(!top.under || !top.under.length){ toast("重なっていません"); return; }
-  st.battle.splice(f.idx,1);
-  const rest=top.under; const newTop=rest.shift();
-  newTop.under=rest.length?rest:null; newTop.tapped=top.tapped; newTop.faceUp=false;
-  st.battle.splice(f.idx,0,newTop);
-  top.under=null; st.grave.push(top);
-  render(); toast("一番上を墓地へ");
-}
-function removeBottom(id){
-  const f=loc(id); if(f.zone!=="battle") return; const st=P[f.pl];
-  const top=st.battle[f.idx];
-  if(!top.under || !top.under.length){ toast("重なっていません"); return; }
-  const removed=top.under.pop(); if(!top.under.length) top.under=null;
-  removed.under=null; st.grave.push(removed);
-  render(); toast("一番下を墓地へ");
-}
 function openDetail(c){
   const civs=civsOf(c); const multi=civs.length>1;
   const card=el("div",`bigcard ${multi?"multi":"c-"+civs[0]}${c.img?" hasimg":""}`);
@@ -721,6 +774,7 @@ function openDetail(c){
 
 /* ===== アクションシート ===== */
 function openSheet(c,zone){
+  if(SPECTATOR){ openDetail(c); return; }
   if(ONLINE){ const f=loc(c.id); if(f && f.pl==="opp"){
     if(zone==="shields" && !c.faceUp){ openShieldAttackMenu(c.id); return; }
     openDetail(c); return;
@@ -756,7 +810,8 @@ function openSheet(c,zone){
     A.push(act("マナに置く", isMulti(c)?"多色はタップイン":"",()=>{moveCard(c.id,"mana"); close();}));
     A.push(act("シールドに置く","シールド化",()=>{moveCard(c.id,"shields"); close();}));
     A.push(act("表向きで盾に追加","G城など",()=>{shieldFaceUp(c.id); close();}));
-    A.push(act("山札に戻す","",()=>{moveCard(c.id,"deckTop"); close();}));
+    A.push(act("山札の上に送る","",()=>{moveCard(c.id,"deckTop"); close();}));
+    A.push(act("山札の下に送る","",()=>{moveCard(c.id,"deckBottom"); close();}));
   }
   if(zone==="battle" && c.under && c.under.length){
     A.push(act("重なり一覧","1枚ずつ選んで操作",()=>{openStackList(c.id);}));
@@ -782,6 +837,8 @@ function openSheet(c,zone){
     A.push(act("手札に加える","",()=>{moveCard(c.id,"hand"); close(); toast("シールドを手札に");}));
     A.push(act("中身を見る","",()=>{close(); toast(`${civLabel(c)} / ${c.name}${c.power!=null?' / '+c.power.toLocaleString():''}`);}));
     A.push(act("バトルゾーンに出す","",()=>{moveCard(c.id,"battle"); close();}));
+    A.push(act("山札の上に送る","",()=>{moveCard(c.id,"deckTop"); close();}));
+    A.push(act("山札の下に送る","",()=>{moveCard(c.id,"deckBottom"); close();}));
     A.push(act("墓地に置く","",()=>{moveCard(c.id,"grave"); close();},"warn"));
   }
   if(zone==="check"){
@@ -897,6 +954,7 @@ function pullFromStack(topId,cardId,to){
 
 /* ===== 山札メニュー ===== */
 function openManaMenu(pl){
+  if(SPECTATOR){ toast("観戦中は操作できません"); return; }
   if(ONLINE && pl==="opp"){ toast("相手のマナは操作できません"); return; }
   const st=P[pl]; const tapN=st.mana.filter(c=>c.tapped).length;
   const sheet=document.getElementById("sheet");
@@ -923,6 +981,7 @@ function discardRandom(pl){
   render(); toast(`ランダムで1枚捨てました：${c.name}`);
 }
 function openDeckMenu(pl){
+  if(SPECTATOR){ toast("観戦中は操作できません"); return; }
   if(ONLINE && pl==="opp"){ toast("相手の山札は操作できません"); return; }
   const sheet=document.getElementById("sheet");
   sheet.innerHTML=`<div class="sheet-h"><div class="mini card back" style="width:30px;height:43px;border-radius:5px"></div>
@@ -1050,6 +1109,7 @@ function attachPointer(node,card,zone){
   node.addEventListener("pointerup",e=>{ if(!drag||drag.id!==card.id) return;
     if(!drag.moved){cleanupDrag(); openSheet(card,zone); return;}
     const tgt=zoneAtPoint(e.clientX,e.clientY); cleanupDrag();
+    if(SPECTATOR){ render(); return; }
     const owner=loc(card.id);
     if(ONLINE && owner && owner.pl==="opp"){ render(); return; }
     if(tgt && owner && tgt.pl===owner.pl && tgt.zone!==zone) handleDrop(card.id,tgt.zone); else render();});
@@ -1069,6 +1129,7 @@ function handleDrop(id,to){
 
 /* ===== ターン操作 ===== */
 function startTurn(){
+  if(SPECTATOR){ return; }
   if(ONLINE){
     if(active!=="me"){ toast("いまは相手の手番です"); return; }
     active="opp";
@@ -1190,7 +1251,7 @@ document.getElementById("ed-apply").onclick=()=>{
   document.getElementById("modal-edit").classList.remove("show");
   if(ONLINE){
     if(mySeat==="host"){ startOnlineMatch(); }
-    else { dealMineOnline(); pushMineNow(); render(); toast("デッキを保存しました（ホストが対戦開始を押すと両者リセットされます）"); }
+    else { dealMineOnline(); pushMineNow(); pushImgMap(); render(); toast("デッキを保存しました（ホストが対戦開始を押すと両者リセットされます）"); }
   } else {
     newGame(); toast("登録したデッキで開始");
   }
@@ -1207,6 +1268,141 @@ document.getElementById("bulk-apply").onclick=()=>{
 };
 
 document.getElementById("ed-backup").onclick=()=>{document.getElementById("backup-ta").value=JSON.stringify(D()); document.getElementById("modal-backup").classList.add("show");};
+
+function renderDeckSheet(){
+  const def=D().slice().map((d,i)=>({d,i})).sort((a,b)=>(a.d.cost-b.d.cost)|| (a.i-b.i));
+  const grid=document.getElementById("sheet-grid"); grid.innerHTML="";
+  def.forEach(({d})=>{
+    const civs=civsOf(d); const multi=civs.length>1;
+    const cell=el("div",`sheet-cell ${multi?"multi":""}`);
+    if(d.img){ const im=el("div","sc-img"); im.style.backgroundImage=`url('${d.img}')`; cell.appendChild(im); }
+    else { cell.style.background = multi ? multiBg(civs) : `linear-gradient(155deg, ${CIV[civs[0]].dot}, rgba(10,12,18,.8))`; }
+    const cost=el("div","sc-cost",String(d.cost)); cell.appendChild(cost);
+    const nm=el("div","sc-name", d.name||"（無名）"); cell.appendChild(nm);
+    grid.appendChild(cell);
+  });
+  if(!def.length) grid.innerHTML='<div style="color:var(--ink-dim);padding:20px">カードがありません</div>';
+}
+function renderDeckStats(){
+  const def=D(); const body=document.getElementById("stats-body");
+  const curve={1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,"9+":0};
+  def.forEach(d=>{ const c=Number(d.cost)||0; if(c>=9) curve["9+"]++; else if(c>=1&&c<=8) curve[c]++; });
+  const civCount={light:0,water:0,darkness:0,fire:0,nature:0};
+  def.forEach(d=>{ civsOf(d).forEach(k=>{ if(civCount[k]!=null) civCount[k]++; }); });
+  const civBar={
+    light:"linear-gradient(90deg,#e9c23a,#f7e07a)",
+    water:"linear-gradient(90deg,#2b7fd4,#5cb3f2)",
+    darkness:"linear-gradient(90deg,#5b4b86,#8a74c0)",
+    fire:"linear-gradient(90deg,#d63c26,#f2764f)",
+    nature:"linear-gradient(90deg,#3f9b3f,#77c95f)"
+  };
+  const costBar="linear-gradient(90deg,#e0a51f,#ffdd57)";
+  const curveMax=Math.max(1,...Object.values(curve));
+  const civMax=Math.max(1,...Object.values(civCount));
+  const curveKeys=["1","2","3","4","5","6","7","8","9+"];
+  let html=`<div class="stat-block"><h4>コストカーブ（全${def.length}枚）</h4>`;
+  curveKeys.forEach(k=>{ const v=curve[k]; const w=Math.round(v/curveMax*100);
+    html+=`<div class="bar-row"><span class="bar-lbl">${k}</span><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${costBar}"></div></div><span class="bar-num">${v}</span></div>`; });
+  html+=`</div><div class="stat-block"><h4>文明の登録枚数（多色は各文明にカウント）</h4>`;
+  CIV_ORDER.forEach(k=>{ const v=civCount[k]; const w=Math.round(v/civMax*100);
+    html+=`<div class="bar-row"><span class="bar-lbl">${CIV[k].jp}</span><div class="bar-track"><div class="bar-fill" style="width:${w}%;background:${civBar[k]}"></div></div><span class="bar-num">${v}</span></div>`; });
+  html+=`</div>`;
+  body.innerHTML=html;
+}
+document.getElementById("ed-sheet").onclick=()=>{ renderDeckSheet(); document.getElementById("modal-sheet").classList.add("show"); };
+function openSleeveMenu(){
+  const has=!!SLEEVES[editTarget];
+  const sheet=document.getElementById("sheet");
+  sheet.innerHTML=`<div class="sheet-h"><div class="mini card back ${has?'sleeved':''}" style="width:30px;height:43px;border-radius:5px;${has?`background-image:url('${SLEEVES[editTarget]}');background-size:cover`:''}"></div>
+    <div><div class="t">デッキスリーブ（${editTarget==='me'?'自分':'相手'}）</div><div class="s">カード裏面の画像</div></div></div>
+    <div class="acts">
+      <button class="act" id="sl-pick">画像を選ぶ<small>裏面すべてに反映</small></button>
+      <button class="act warn" id="sl-clear">初期の裏面に戻す</button>
+      <button class="act" id="sl-cancel">閉じる</button></div>`;
+  document.getElementById("scrim").classList.add("show");
+  document.getElementById("sl-pick").onclick=()=>{
+    const inp=document.createElement("input"); inp.type="file"; inp.accept="image/*";
+    inp.onchange=()=>{ const f=inp.files[0]; if(!f) return; const r=new FileReader();
+      r.onload=()=>{ close(); openCropper(r.result, (durl)=>{ SLEEVES[editTarget]=durl; const ok=saveSleeves(); if(ONLINE&&editTarget==="me") pushSleeve(); render(); toast(ok?"デッキスリーブを設定しました":"設定しました（容量超過で自動保存は不可）"); }); };
+      r.readAsDataURL(f); };
+    inp.click();
+  };
+  document.getElementById("sl-clear").onclick=()=>{ SLEEVES[editTarget]=null; saveSleeves(); if(ONLINE&&editTarget==="me") pushSleeve(); render(); close(); toast("スリーブを解除しました"); };
+  document.getElementById("sl-cancel").onclick=close;
+}
+document.getElementById("ed-sleeve").onclick=openSleeveMenu;
+
+/* ===== 画像クロッパー（スリーブ切り取り） ===== */
+let cropState=null;
+function openCropper(src, onDone){
+  const modal=document.getElementById("modal-crop");
+  const canvas=document.getElementById("crop-canvas");
+  const stage=document.getElementById("crop-stage");
+  const zoom=document.getElementById("crop-zoom");
+  const img=new Image();
+  img.onload=()=>{
+    modal.classList.add("show");
+    const stageW=stage.clientWidth, stageH=stage.clientHeight;
+    // フレーム（カード比率）の実サイズ：幅58%
+    const frameW=stageW*0.58, frameH=frameW*(80/58);
+    // 画像がフレームを覆う最小スケール
+    const baseScale=Math.max(frameW/img.width, frameH/img.height);
+    cropState={img, stageW, stageH, frameW, frameH, baseScale, zoom:1, x:0, y:0, onDone};
+    canvas.width=img.width; canvas.height=img.height;
+    canvas.getContext("2d").drawImage(img,0,0);
+    zoom.value=100;
+    // 中央寄せ
+    centerCrop();
+    drawCrop();
+  };
+  img.onerror=()=>{ toast("画像を読み込めませんでした"); };
+  img.src=src;
+
+  zoom.oninput=()=>{ if(!cropState) return; cropState.zoom=Number(zoom.value)/100; clampCrop(); drawCrop(); };
+  let drag=null;
+  const start=(x,y)=>{ drag={x,y,ox:cropState.x,oy:cropState.y}; stage.classList.add("dragging"); };
+  const moveP=(x,y)=>{ if(!drag||!cropState) return; cropState.x=drag.ox+(x-drag.x); cropState.y=drag.oy+(y-drag.y); clampCrop(); drawCrop(); };
+  const end=()=>{ drag=null; stage.classList.remove("dragging"); };
+  stage.onpointerdown=e=>{ start(e.clientX,e.clientY); stage.setPointerCapture(e.pointerId); };
+  stage.onpointermove=e=>moveP(e.clientX,e.clientY);
+  stage.onpointerup=end; stage.onpointercancel=end;
+
+  document.getElementById("crop-cancel").onclick=()=>{ modal.classList.remove("show"); cropState=null; };
+  document.getElementById("crop-ok").onclick=()=>{
+    if(!cropState) return;
+    const out=exportCrop(); modal.classList.remove("show");
+    const cb=cropState.onDone; cropState=null; cb(out);
+  };
+}
+function effScale(){ return cropState.baseScale*cropState.zoom; }
+function centerCrop(){ const s=effScale(); cropState.x=(cropState.stageW-cropState.img.width*s)/2; cropState.y=(cropState.stageH-cropState.img.height*s)/2; }
+function clampCrop(){
+  const s=effScale(); const cs=cropState;
+  const fL=(cs.stageW-cs.frameW)/2, fT=(cs.stageH-cs.frameH)/2;
+  const imgW=cs.img.width*s, imgH=cs.img.height*s;
+  // 画像がフレームを常に覆うように制限
+  cs.x=Math.min(fL, Math.max(fL+cs.frameW-imgW, cs.x));
+  cs.y=Math.min(fT, Math.max(fT+cs.frameH-imgH, cs.y));
+}
+function drawCrop(){
+  const cv=document.getElementById("crop-canvas"); const s=effScale();
+  cv.style.transform=`translate(${cropState.x}px,${cropState.y}px) scale(${s})`;
+}
+function exportCrop(){
+  const cs=cropState; const s=effScale();
+  const fL=(cs.stageW-cs.frameW)/2, fT=(cs.stageH-cs.frameH)/2;
+  // フレーム左上のステージ座標 → 画像内座標
+  const sx=(fL-cs.x)/s, sy=(fT-cs.y)/s, sw=cs.frameW/s, sh=cs.frameH/s;
+  const outW=360, outH=Math.round(360*(80/58));
+  const cv=document.createElement("canvas"); cv.width=outW; cv.height=outH;
+  cv.getContext("2d").drawImage(cs.img, sx, sy, sw, sh, 0, 0, outW, outH);
+  return cv.toDataURL("image/jpeg",0.85);
+}
+document.getElementById("ed-stats").onclick=()=>{ renderDeckStats(); document.getElementById("modal-stats").classList.add("show"); };
+document.getElementById("sheet-close").onclick=()=>document.getElementById("modal-sheet").classList.remove("show");
+document.getElementById("stats-close").onclick=()=>document.getElementById("modal-stats").classList.remove("show");
+document.getElementById("modal-sheet").addEventListener("click",e=>{if(e.target.id==="modal-sheet") e.currentTarget.classList.remove("show");});
+document.getElementById("modal-stats").addEventListener("click",e=>{if(e.target.id==="modal-stats") e.currentTarget.classList.remove("show");});
 document.getElementById("backup-close").onclick=()=>document.getElementById("modal-backup").classList.remove("show");
 document.getElementById("backup-copy").onclick=()=>{const ta=document.getElementById("backup-ta"); ta.select();
   try{navigator.clipboard.writeText(ta.value); toast("コピーしました");}catch(e){document.execCommand("copy"); toast("コピーしました");}};
@@ -1271,7 +1467,11 @@ function randomRoom(){ return Math.random().toString(36).slice(2,7).toUpperCase(
 function getClientId(){ try{ let c=localStorage.getItem("dm_client"); if(!c){ c=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem("dm_client",c);} return c; }catch(e){ return "c"+Date.now(); } }
 function setStatus(html){ const e=document.getElementById("online-status"); if(e) e.innerHTML=html; }
 
-function serializeSide(s){ const o={}; ZONES.forEach(z=>o[z]=s[z]||[]); return JSON.stringify(o); }
+function stripImgs(cards){ return (cards||[]).map(c=>{ const o=Object.assign({},c); o.img=null; if(o.under) o.under=stripImgs(o.under); return o; }); }
+function serializeSide(s){ const o={}; ZONES.forEach(z=>o[z]=stripImgs(s[z])); return JSON.stringify(o); }
+function rehydrateImgs(state, map){ if(!map) return; const fix=(c)=>{ if(c.imgKey!=null && map[c.imgKey]) c.img=map[c.imgKey]; if(c.under) c.under.forEach(fix); }; ZONES.forEach(z=>{ (state[z]||[]).forEach(fix); }); }
+function localImgMap(pl){ const m={}; (DECKS[pl]||[]).forEach((d,i)=>{ if(d.img) m[i]=d.img; }); return m; }
+function pushImgMap(){ if(ONLINE&&roomRef&&mySeat){ roomRef.child("imgmap/"+mySeat).set(localImgMap("me")); } }
 function deserializeSide(str){ try{ const o=JSON.parse(str); const s=emptyState(); ZONES.forEach(z=>{ s[z]=Array.isArray(o[z])?o[z]:[]; }); return s; }catch(e){ return emptyState(); } }
 
 function dealMineOnline(){
@@ -1281,7 +1481,7 @@ function dealMineOnline(){
   for(let i=0;i<5 && P.me.deck.length;i++) P.me.hand.push(P.me.deck.shift());
 }
 function pushMine(){
-  if(!ONLINE||applyingRemote||!olInit||!mySeat||!roomRef) return;
+  if(!ONLINE||SPECTATOR||applyingRemote||!olInit||!mySeat||!roomRef) return;
   clearTimeout(pushTimer);
   pushTimer=setTimeout(()=>{ roomRef.child(mySeat).set(serializeSide(P.me)); }, 150);
 }
@@ -1303,18 +1503,50 @@ function initOnline(room){
     if(cur.host===clientId||cur.guest===clientId) return cur;
     if(!cur.host){ cur.host=clientId; return cur; }
     if(!cur.guest){ cur.guest=clientId; return cur; }
-    return; // 満室
+    return cur; // 満席：観戦者として入る（席は取らない）
   }, (err,committed,snap)=>{
     const seats=snap?snap.val():null;
-    if(!seats || (seats.host!==clientId && seats.guest!==clientId)){
-      setStatus('<span class="ol-dot off"></span>この部屋は満室です（2人まで）'); return;
+    if(seats && (seats.host===clientId || seats.guest===clientId)){
+      // プレイヤーとして参加
+      mySeat = seats.host===clientId ? "host":"guest";
+      oppSeat = mySeat==="host" ? "guest":"host";
+      const nb=document.getElementById("btn-online-new");
+      if(mySeat==="host"){ nb.style.display=""; nb.textContent="対戦開始（両者に配り直し）"; }
+      else nb.style.display="none";
+      subscribeRoom(room);
+      pushSleeve();
+      pushImgMap();
+    } else {
+      // 観戦者：席を取らず、読み取り専用で購読
+      SPECTATOR=true;
+      document.getElementById("btn-online-new").style.display="none";
+      document.getElementById("btn-turn").style.display="none";
+      subscribeSpectator(room);
     }
-    mySeat = seats.host===clientId ? "host":"guest";
-    oppSeat = mySeat==="host" ? "guest":"host";
-    const nb=document.getElementById("btn-online-new");
-    if(mySeat==="host"){ nb.style.display=""; nb.textContent="対戦開始（両者に配り直し）"; }
-    else nb.style.display="none";
-    subscribeRoom(room);
+  });
+}
+function subscribeSpectator(room){
+  roomRef.on("value", snap=>{
+    const data=snap.val()||{};
+    applyingRemote=true;
+    // ホスト=下(me)、ゲスト=上(opp)で固定表示
+    P.me  = data.host  ? deserializeSide(data.host)  : emptyState();
+    P.opp = data.guest ? deserializeSide(data.guest) : emptyState();
+    rehydrateImgs(P.me,  (data.imgmap && data.imgmap.host)  || {});
+    rehydrateImgs(P.opp, (data.imgmap && data.imgmap.guest) || {});
+    mySleeveView = (data.sleeve && data.sleeve.host) ? data.sleeve.host : null;
+    oppSleeve = (data.sleeve && data.sleeve.guest) ? data.sleeve.guest : null;
+    if(data.meta){
+      const a=data.meta.active;
+      active = (a==="host") ? "me":"opp";
+      tHost=(data.meta.tHost!=null)?data.meta.tHost:tHost; tGuest=(data.meta.tGuest!=null)?data.meta.tGuest:tGuest;
+      turnMe=tHost; turnOpp=tGuest;
+    }
+    if(!olInit){ olInit=true; buildBoard(); }
+    render();
+    applyingRemote=false;
+    const hostThere=!!(data.seats&&data.seats.host), guestThere=!!(data.seats&&data.seats.guest);
+    setStatus(`<span class="ol-dot on"></span>部屋 <b>${room}</b> ・ 観戦中（ホスト下／ゲスト上） ・ ${hostThere&&guestThere?'両者 接続中':'プレイヤーを待っています'}`);
   });
 }
 function subscribeRoom(room){
@@ -1324,11 +1556,13 @@ function subscribeRoom(room){
     let doPush=false;
     // 自分の側：初回のみ復元 or 配布
     if(!olInit){
-      if(data[mySeat]) P.me=deserializeSide(data[mySeat]);
+      if(data[mySeat]){ P.me=deserializeSide(data[mySeat]); rehydrateImgs(P.me, localImgMap("me")); }
       else { dealMineOnline(); doPush=true; }
     }
     // 相手の側
     P.opp = data[oppSeat] ? deserializeSide(data[oppSeat]) : emptyState();
+    rehydrateImgs(P.opp, (data.imgmap && data.imgmap[oppSeat]) || {});
+    oppSleeve = (data.sleeve && data.sleeve[oppSeat]) ? data.sleeve[oppSeat] : null;
     // メタ（手番・ターン・世代）
     let justMyTurn=false;
     if(data.meta){
@@ -1384,7 +1618,7 @@ function startOnlineMatch(){
     active = (first===mySeat)?"me":"opp";
     turnMe=(mySeat==="host"?tHost:tGuest); turnOpp=(mySeat==="host"?tGuest:tHost);
     lastMetaActive=first;
-    dealMineOnline(); pushMineNow();
+    dealMineOnline(); pushMineNow(); pushImgMap();
     roomRef.child("meta").set({active:first, gen:g, tHost, tGuest});
     render(); toast(first===mySeat?"対戦開始：あなたが先攻です":"対戦開始：あなたが後攻です");
   });
@@ -1392,6 +1626,7 @@ function startOnlineMatch(){
 
 /* ===== 起動 ===== */
 DECKS=loadDecks();
+SLEEVES=loadSleeves();
 setEditTarget("me");
 (function(){
   const room=new URLSearchParams(location.search).get("room");
