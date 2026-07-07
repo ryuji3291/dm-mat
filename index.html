@@ -203,6 +203,11 @@
   /* 表向きシールド */
   .card.shieldup{outline:2px solid var(--gold); outline-offset:-2px;}
   .card.revealed{outline:2px dashed var(--gold); outline-offset:-2px;}
+  .hyper-lane{display:flex; flex-wrap:wrap; gap:3px; min-width:44px; max-width:120px; min-height:60px; align-content:flex-start; padding:3px; border:1px dashed #7a6fd0; border-radius:8px; background:linear-gradient(180deg,rgba(120,110,210,.12),rgba(20,25,36,.3));}
+  .sealchip{position:absolute; top:1px; right:1px; z-index:3; font:700 7px "Saira Condensed",sans-serif; background:#6f5fc0; color:#fff; padding:0 3px; border-radius:3px;}
+  .card.sealed{box-shadow:0 0 0 2px #7a6fd0, 2px 2px 0 -1px #2a2440, 4px 4px 0 -1px #1c1830, 0 4px 8px rgba(0,0,0,.5);}
+  .seal-card{position:absolute; inset:0; z-index:2; border-radius:inherit; background:linear-gradient(160deg,#2a2650,#171430); border:1px solid #7a6fd0;}
+  .seal-card::after{content:"封"; position:absolute; inset:0; display:flex; align-items:center; justify-content:center; color:#b3a7f0; font:700 15px "Saira Condensed",sans-serif; text-shadow:0 0 6px rgba(122,111,208,.6);}
   .sfu{position:absolute; top:1px; left:1px; z-index:3; font:700 7px "Saira Condensed",sans-serif;
     background:var(--gold); color:#1a1408; padding:0 3px; border-radius:3px; letter-spacing:.5px;}
   /* 進化・重なり */
@@ -514,7 +519,7 @@ function buildDeck(pl){
     type:d.type||"creature", power:(d.power===""?null:d.power), tapped:false, img:d.img||null, imgKey:(d.img?di:null), evo:!!d.evo, under:null}));
 }
 
-const ZONES=["deck","hand","mana","battle","shields","grave","look","check"];
+const ZONES=["deck","hand","mana","battle","shields","grave","look","check","hyper"];
 function emptyState(){const s={}; ZONES.forEach(z=>s[z]=[]); return s;}
 let P={me:emptyState(), opp:emptyState()};
 let active="me"; let turnMe=1, turnOpp=0; let tHost=1, tGuest=0;
@@ -543,7 +548,8 @@ function rowHTML(pl,zone){
   if(zone==="battle") return `<section class="row" data-pl="${pl}" data-dropzone="battle">
     <div class="ztag saira">BATTLE ZONE <em>バトルゾーン</em></div>
     <div class="split"><div class="lane tappable" data-pl="${pl}" data-zone="battle"></div>
-    <div class="pile-slot"><div class="lbl">墓地</div><div data-pl="${pl}" data-grave data-dropzone="grave"></div></div></div></section>`;
+    <div class="pile-slot"><div class="lbl">墓地</div><div data-pl="${pl}" data-grave data-dropzone="grave"></div></div>
+    <div class="pile-slot"><div class="lbl">超次元</div><div class="lane hyper-lane" data-pl="${pl}" data-zone="hyper" data-dropzone="hyper"></div></div></div></section>`;
   if(zone==="mana") return `<section class="row" data-pl="${pl}" data-dropzone="mana">
     <div class="ztag saira">MANA ZONE <em>マナゾーン</em> <span class="count" data-cnt="${pl}-mana"></span> <span class="mana-tap" data-manatap="${pl}"></span> <button class="ztag-btn" data-manamenu="${pl}">操作</button></div>
     <div class="lane tappable" data-pl="${pl}" data-zone="mana"></div></section>`;
@@ -597,6 +603,10 @@ function makeCard(c,zone){
   if(stacked){ d.classList.add("stacked"); d.appendChild(el("div","evchip","×"+(c.under.length+1))); }
   else if(c.evo){ d.appendChild(el("div","evchip","進")); }
   if(c.reveal){ d.classList.add("revealed"); }
+  if(c.seals && c.seals.length){ d.classList.add("sealed");
+    const n=c.seals.length;
+    for(let i=0;i<Math.min(n,3);i++){ const s=el("div","seal-card"); s.style.transform=`translate(${(i+1)*5}px,${(i+1)*5}px)`; d.appendChild(s); }
+    d.appendChild(el("div","sealchip","封"+n)); }
   attachPointer(d,c,zone); return d;
 }
 function makeBack(pl){
@@ -657,6 +667,9 @@ function renderSide(pl){
     const w=el("div",""); w.style.position="relative"; w.appendChild(d); w.appendChild(badge); w.onclick=()=>openGraveList(pl); gp.appendChild(w);
   } else gp.appendChild(emptyHint("墓地\n空"));
 
+  const hl=laneEl(pl,"hyper");
+  if(hl){ hl.innerHTML=""; if(!st.hyper || !st.hyper.length) hl.appendChild(emptyHint("超次元")); else st.hyper.forEach(c=>hl.appendChild(makeCard(c,"hyper"))); }
+
   const lr=document.querySelector(`[data-lookrow="${pl}"]`); const ll=laneEl(pl,"look"); ll.innerHTML="";
   if(st.look.length){ lr.style.display="";
     if(SPECTATOR || (ONLINE && pl==="opp")) st.look.forEach(c=>{ if(c.reveal){ const f=staticCard(c); f.style.cursor="pointer"; f.onclick=()=>openDetail(c); ll.appendChild(f); } else ll.appendChild(makeBack(pl)); });
@@ -678,6 +691,7 @@ function moveCard(id,to){
   const f=loc(id); if(!f) return; const st=P[f.pl];
   const c=st[f.zone].splice(f.idx,1)[0];
   if(c.under && c.under.length){ c.under.forEach(u=>{u.under=null; st.grave.push(u);}); c.under=null; toast("進化元を墓地へ"); }
+  if(c.seals && c.seals.length && to!=="hyper"){ c.seals.forEach(s=>{s.under=null; st.grave.push(s);}); c.seals=null; }
   c.faceUp=false; c.reveal=false;
   if(to==="battle"){ c.tapped=false; st.battle.push(c); }
   else if(to==="mana"){ c.tapped=isMulti(c); st.mana.push(c); }   // 多色はタップイン
@@ -750,6 +764,32 @@ function stackOnto(evoId, targetId){
   evo.faceUp = false;
   P[ft.pl].battle.push(evo);
   render(); toast("進化：重ねました");
+}
+function sealPick(pl){
+  if(!P[pl].deck.length){ toast("山札が空です"); return; }
+  const targets=P[pl].battle;
+  if(!targets.length){ toast("封印する先のクリーチャーがいません"); close(); return; }
+  const sheet=document.getElementById("sheet");
+  sheet.innerHTML=`<div class="sheet-h"><div><div class="t">封印：重ねる先を選ぶ</div><div class="s">${PLABEL[pl]}のバトルゾーン</div></div></div>
+    <div class="acts">${targets.map(t=>`<button class="act full" data-tid="${t.id}">${esc(t.name)}<small>コスト${t.cost}${t.power!=null?' / '+t.power.toLocaleString():''}${t.seals&&t.seals.length?' / 封印×'+t.seals.length:''}</small></button>`).join("")}
+      <button class="act" id="seal-cancel">キャンセル</button></div>`;
+  document.getElementById("scrim").classList.add("show");
+  sheet.querySelectorAll("[data-tid]").forEach(b=>b.onclick=()=>{ doSeal(pl, Number(b.dataset.tid)); close(); });
+  document.getElementById("seal-cancel").onclick=close;
+}
+function doSeal(pl, targetId){
+  const ft=loc(targetId); if(!ft || ft.zone!=="battle"){ return; }
+  if(!P[pl].deck.length){ toast("山札が空です"); return; }
+  const card=P[pl].deck.shift(); card.faceUp=false; card.reveal=false; card.under=null;
+  const t=ft.card; if(!t.seals) t.seals=[]; t.seals.push(card);
+  render(); toast("封印しました（山札の上を裏向きで重ねた）");
+}
+function unseal(id){
+  const f=loc(id); if(!f) return; const c=f.card;
+  if(!c.seals || !c.seals.length){ toast("封印されていません"); return; }
+  c.seals.forEach(s=>{ s.under=null; P[f.pl].grave.push(s); });
+  const n=c.seals.length; c.seals=null;
+  render(); toast(`封印を外しました（${n}枚を墓地へ）`);
 }
 function openDetail(c){
   const civs=civsOf(c); const multi=civs.length>1;
@@ -860,6 +900,8 @@ function openSheet(c,zone){
     if(ONLINE) A.push(act(c.reveal?"見せるのをやめる":"相手に見せる", c.reveal?"非公開に戻す":"このカードを公開",()=>{toggleReveal(c.id); close();}));
   }
   if(c.evo) A.push(act("進化（重ねる）","場のクリーチャーに重ねる",()=>{evolvePick(c.id);}));
+  if(zone==="battle" && c.seals && c.seals.length) A.push(act("封印を外す","封印を墓地へ",()=>{unseal(c.id); close();},"warn"));
+  if(zone!=="hyper") A.push(act("超次元ゾーンに送る","超次元へ",()=>{moveCard(c.id,"hyper"); close();}));
   if(zone!=="look" && zone!=="check") A.push(act("複製","同じカードを増やす",()=>{dupInPlay(c.id,zone); close();}));
   sheet.innerHTML=head+`<div class="acts">${A.map(a=>a.html).join("")}</div>`;
   sheet.querySelectorAll(".act").forEach((b,i)=>b.onclick=A[i].fn);
@@ -992,6 +1034,7 @@ function openDeckMenu(pl){
       <button class="act" id="d-view">山札の中身を見る<small>リストから操作</small></button>
       <button class="act" id="d-tomana">一番上をマナに置く<small>チャージ</small></button>
       <button class="act" id="d-mill">◯枚を墓地に<small>上から墓地へ</small></button>
+      <button class="act" id="d-seal">封印する<small>上のカードを場のクリーチャーに</small></button>
       <button class="act" id="d-shuf">シャッフル<small>山札を混ぜる</small></button>
     </div>`;
   document.getElementById("scrim").classList.add("show");
@@ -1000,6 +1043,7 @@ function openDeckMenu(pl){
   document.getElementById("d-view").onclick=()=>{openDeckList(pl);};
   document.getElementById("d-tomana").onclick=()=>{deckTopToMana(pl); close();};
   document.getElementById("d-mill").onclick=()=>{numberSheet("何枚墓地に置きますか？",1,P[pl].deck.length,(n)=>mill(pl,n));};
+  document.getElementById("d-seal").onclick=()=>{sealPick(pl);};
   document.getElementById("d-shuf").onclick=()=>{shuffle(P[pl].deck); close(); render(); toast("山札をシャッフル");};
 }
 function openDeckList(pl){
@@ -1467,9 +1511,9 @@ function randomRoom(){ return Math.random().toString(36).slice(2,7).toUpperCase(
 function getClientId(){ try{ let c=localStorage.getItem("dm_client"); if(!c){ c=Math.random().toString(36).slice(2)+Date.now().toString(36); localStorage.setItem("dm_client",c);} return c; }catch(e){ return "c"+Date.now(); } }
 function setStatus(html){ const e=document.getElementById("online-status"); if(e) e.innerHTML=html; }
 
-function stripImgs(cards){ return (cards||[]).map(c=>{ const o=Object.assign({},c); o.img=null; if(o.under) o.under=stripImgs(o.under); return o; }); }
+function stripImgs(cards){ return (cards||[]).map(c=>{ const o=Object.assign({},c); o.img=null; if(o.under) o.under=stripImgs(o.under); if(o.seals) o.seals=stripImgs(o.seals); return o; }); }
 function serializeSide(s){ const o={}; ZONES.forEach(z=>o[z]=stripImgs(s[z])); return JSON.stringify(o); }
-function rehydrateImgs(state, map){ if(!map) return; const fix=(c)=>{ if(c.imgKey!=null && map[c.imgKey]) c.img=map[c.imgKey]; if(c.under) c.under.forEach(fix); }; ZONES.forEach(z=>{ (state[z]||[]).forEach(fix); }); }
+function rehydrateImgs(state, map){ if(!map) return; const fix=(c)=>{ if(c.imgKey!=null && map[c.imgKey]) c.img=map[c.imgKey]; if(c.under) c.under.forEach(fix); if(c.seals) c.seals.forEach(fix); }; ZONES.forEach(z=>{ (state[z]||[]).forEach(fix); }); }
 function localImgMap(pl){ const m={}; (DECKS[pl]||[]).forEach((d,i)=>{ if(d.img) m[i]=d.img; }); return m; }
 function pushImgMap(){ if(ONLINE&&roomRef&&mySeat){ roomRef.child("imgmap/"+mySeat).set(localImgMap("me")); } }
 function deserializeSide(str){ try{ const o=JSON.parse(str); const s=emptyState(); ZONES.forEach(z=>{ s[z]=Array.isArray(o[z])?o[z]:[]; }); return s; }catch(e){ return emptyState(); } }
